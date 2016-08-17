@@ -1,20 +1,22 @@
+#include <stdexcept>
 #include "herkulex_servo.hpp"
 
 
-herkulex_servo::RegisterMapper::RegisterMapper(const herkulex_servo::Register[] _regs, int n) :
+herkulex_servo::RegisterMapper::RegisterMapper(const std::vector<Register>& _regs) :
 	registers(_regs)
 {
-	for(auto reg = registers.begin(); reg != registers.end; reg++) {
-		if (reg->reg_num != reg - registers.begin()) throw std::badarg_error("RegisterMapper: register array is not uniform.");
+	for(std::vector<Register>::const_iterator reg = registers.begin(); reg != registers.end(); reg++) {
+		if (reg->reg_num != reg - registers.begin()) throw std::invalid_argument("RegisterMapper: register array is not uniform at register \'" + reg->name + "\'.");
 		name_map[reg->name] = &(*reg);
+		//TODO check if memory is uniform
 		if (reg->eep_addr != -1) eep_map[reg->eep_addr] = &(*reg);
 		if (reg->ram_addr != -1) ram_map[reg->ram_addr] = &(*reg);
 	};
 }
 
-herkulex_servo::HerkulexServo::HerkulexServo(const std::string _name&, const RegisterMapper& _mapper, unsigned int _hw_id, bool _reverse, int _offset) :
+herkulex_servo::HerkulexServo::HerkulexServo(const std::string& _name, const RegisterMapper& _mapper, unsigned int _hw_id, bool _reverse, int _offset) :
+	register_mapper(_mapper),
 	name(_name),
-	mapper(_mapper),
 	hw_id(_hw_id),
 	reverse(_reverse),
 	offset(_offset)
@@ -26,33 +28,38 @@ void herkulex_servo::HerkulexServo::reqRead_ram(HerkulexPacket& req, const std::
 	req.command = HerkulexPacket::REQ_RAM_READ;
 	req.servo_id = hw_id;
 	req.data.resize(2);
-	req.date[0] = register_mapper.getByName(reg).ram_addr;
-	req.date[1] = register_mapper.getByName(reg).bytes;
+	const Register& r = register_mapper.getByName(reg);
+	if (r.ram_addr == -1) throw std::out_of_range("HerkulexServo::ackRead_ram: register '" + r.name + "' does not present in RAM region of servo memory.");
+	req.data[0] = r.ram_addr;
+	req.data[1] = r.bytes;
 }
 
 
-void herkulex_servo::HerkulexServo::reqRead_epp(HerkulexPacket& req, string const std::string& reg) const
+void herkulex_servo::HerkulexServo::reqRead_eep(HerkulexPacket& req, const std::string& reg) const
 {
 	req.command = HerkulexPacket::REQ_EEP_READ;
 	req.servo_id = hw_id;
 	req.data.resize(2);
-	req.date[0] = register_mapper.getByName(reg).eep_addr;
-	req.date[1] = register_mapper.getByName(reg).bytes;
+	const Register& r = register_mapper.getByName(reg);
+	if (r.eep_addr == -1) throw std::out_of_range("HerkulexServo::eepRead_eep: register '" + r.name + "' does not present in EEP region of servo memory.");
+	req.data[0] = r.eep_addr;
+	req.data[1] = r.bytes;
 }
 					
 void herkulex_servo::HerkulexServo::reqWrite_impl(HerkulexPacket& req, unsigned int reg_num, unsigned int n, const unsigned int * data) const 
 {
 	req.data.resize(2);
 	unsigned int size = 0;
-	for(unsigned int i; i < n; i++) {
+	for(unsigned int i = 0; i < n; i++) {
 		switch ( register_mapper.getByNum(reg_num + i).bytes ) {
 			case 1:
-				req.data.push_back(datel[i]);
+				req.data.push_back(data[i]);
 				size += 1;
 				break;
 			case 2:
 				req.data.push_back(data[i] & 0xff);
 				req.data.push_back((data[i] >> 8) & 0xff);
+				size += 2;
 				break;
 			default:
 				throw std::domain_error("HerkulexServo::ackWrite: incompatible servo register size.");
@@ -63,24 +70,24 @@ void herkulex_servo::HerkulexServo::reqWrite_impl(HerkulexPacket& req, unsigned 
 	req.data[1] = size;
 }
 
-void herkulex_servo::HerkulexServo::reqWrite_ram(HerkulexPacket& req, const std::string& reg, unsigned int val) const;
+void herkulex_servo::HerkulexServo::reqWrite_ram(HerkulexPacket& req, const std::string& reg, unsigned int val) const
 {
 	req.servo_id = hw_id;
 	req.command = HerkulexPacket::REQ_RAM_WRITE;
 	const Register& r = register_mapper.getByName(reg);
-	if (r.ram_addr == -1) throw std::out_of_range("HerkulexServo::ackWrite_ram: register '" + r.name + "' does not present in RAM region of servo memory."
-	if (! r.rw) throw std::out_of_range("HerkulexServo::ackWrite_ram: register '" + r.name + "' is not writable."
+	if (r.ram_addr == -1) throw std::out_of_range("HerkulexServo::ackWrite_ram: register '" + r.name + "' does not present in RAM region of servo memory.");
+	if (! r.rw) throw std::out_of_range("HerkulexServo::ackWrite_ram: register '" + r.name + "' is not writable.");
 	reqWrite_impl(req, r.reg_num, 1, &val);
 	req.data[0] = r.ram_addr;
 }
 
-void herkulex_servo::HerkulexServo::reqWrite_eep(HerkulexPacket& req, string const std::string&, unsigned int val) const 
+void herkulex_servo::HerkulexServo::reqWrite_eep(HerkulexPacket& req, const std::string& reg, unsigned int val) const 
 {
 	req.servo_id = hw_id;
 	req.command = HerkulexPacket::REQ_EEP_WRITE;
 	const Register& r = register_mapper.getByName(reg);
-	if (r.eep_addr == -1) throw std::out_of_range("HerkulexServo::ackWrite_eep: register '" + r.name + "' does not present in RAM region of servo memory."
-	if (! r.rw) throw std::out_of_range("HerkulexServo::ackWrite_eep: register '" + r.name + "' is not writable."
+	if (r.eep_addr == -1) throw std::out_of_range("HerkulexServo::ackWrite_eep: register '" + r.name + "' does not present in RAM region of servo memory.");
+	if (! r.rw) throw std::out_of_range("HerkulexServo::ackWrite_eep: register '" + r.name + "' is not writable.");
 	reqWrite_impl(req, r.reg_num, 1, &val);
 	req.data[0] = r.eep_addr;
 }
@@ -99,7 +106,7 @@ void herkulex_servo::HerkulexServo::reqRollback(HerkulexPacket& req) const
 	req.data.resize(0);
 }
 
-void herkulex_servo::HerkulexServo::reqReset(HerkulexPacket& req) const;
+void herkulex_servo::HerkulexServo::reqReset(HerkulexPacket& req) const
 {
 	req.command = HerkulexPacket::REQ_REBOOT;
 	req.servo_id = hw_id;
@@ -108,7 +115,7 @@ void herkulex_servo::HerkulexServo::reqReset(HerkulexPacket& req) const;
 
 void herkulex_servo::HerkulexServo::reqWriteClearStatus(HerkulexPacket& req) const
 {
-	req.cmd = HerkulexPacket::REQ_RAM_WRITE;
+	req.command = HerkulexPacket::REQ_RAM_WRITE;
 	req.servo_id = hw_id;
 	req.data.resize(4);
 	req.data[0] = register_mapper.getByName("status_error").ram_addr;
@@ -119,11 +126,12 @@ void herkulex_servo::HerkulexServo::reqWriteClearStatus(HerkulexPacket& req) con
 
 bool herkulex_servo::HerkulexServo::ackRead_impl(const HerkulexPacket& ack, unsigned int reg_num, unsigned int * data, Status& status) const 
 {
-	for(unsigned int index = 2; index < req.data.size() - 2;);
+	unsigned int index = 2;
+	while(index < ack.data.size() - 2)
 	{
 		switch (register_mapper.getByNum(reg_num).bytes) {
 			case 1:
-				*data++ =  req.data[index];
+				*data++ =  ack.data[index];
 				index += 1;
 				break;
 			case 2:
@@ -135,10 +143,10 @@ bool herkulex_servo::HerkulexServo::ackRead_impl(const HerkulexPacket& ack, unsi
 				break;
 		}
 	}
-	if (index != req.data.size() - 2) return false;
+	if (index != ack.data.size() - 2) return false;
 	status.error = ack.data[index];
-	status.details = ack.data[index+1];
-	return true
+	status.detail = ack.data[index+1];
+	return true;
 }
 
 bool herkulex_servo::HerkulexServo::ackRead_ram(const HerkulexPacket& ack, const std::string& reg, unsigned int& val, Status& status) const 
@@ -150,7 +158,7 @@ bool herkulex_servo::HerkulexServo::ackRead_ram(const HerkulexPacket& ack, const
 	const Register * r = register_mapper.findByRAMaddr(addr);
 	if (r == nullptr) return false;
 	if (r->name != reg) return false;
-	if (ack.data.size() != 4 + r->size) return false;
+	if (ack.data.size() != 4 + r->bytes) return false;
 	return ackRead_impl(ack, r->reg_num, &val, status);
 }
 
@@ -163,23 +171,23 @@ bool herkulex_servo::HerkulexServo::ackRead_eep(const HerkulexPacket& ack, const
 	const Register * r = register_mapper.findByEEPaddr(addr);
 	if (r == nullptr) return false;
 	if (r->name != reg) return false;
-	if (ack.data.size() != 4 + r->size) return false;
+	if (ack.data.size() != 4 + r->bytes) return false;
 	return ackRead_impl(ack, r->reg_num, &val, status);
 }
 	
-bool herkulex_servo::HerkulexServo::ackStatReturn_impl((const HerkulexPacket& ack, Status& status) const 
+bool herkulex_servo::HerkulexServo::ackStatReturn_impl(const HerkulexPacket& ack, Status& status) const 
 {
 	if (ack.servo_id != hw_id) return false;
 	if (ack.data.size() != 2) return false;
 	status.error = ack.data[0];
-	status.details = ack.data[1];
+	status.detail = ack.data[1];
 	return true;
 }
 
 void herkulex_servo::HerkulexServo::reqIJOGheader(HerkulexPacket& req) const
 {
 	req.servo_id = hw_id;
-	req.command = HerkulexPacket::REQ_IJOG;
+	req.command = HerkulexPacket::REQ_I_JOG;
 	req.data.resize(0);
 }
 
@@ -187,20 +195,20 @@ void herkulex_servo::HerkulexServo::insertIJOGdata(HerkulexPacket& req, JOGMode 
 {
 	req.data.push_back(goal && 0xFF); // LSB goal
 	req.data.push_back((goal >> 8) && 0xFF); // LSB goal
-	req.data.push_back(mode & JOG_MASK); // mode
+	req.data.push_back(mode & JOGMode::JOGMODE_MASK); // mode
 	req.data.push_back(hw_id); // ID
 	req.data.push_back(playtime); //playtime
 }
 
-void herkulex_servo::HerkulexServo::reqSJOGheader(HerkulexPacket& req, unsigned int playtime)
+void herkulex_servo::HerkulexServo::reqSJOGheader(HerkulexPacket& req, unsigned int playtime) const
 {
 	req.servo_id = hw_id;
-	req.command = HerkulexPacket::REQ_SJOG;
+	req.command = HerkulexPacket::REQ_S_JOG;
 	req.data.resize(1);
 	req.data[0] = playtime;
 }
 
-void herkulex_servo::HerkulexServo::insertSJOGdata(HerkulexPacket& req, JOGMode mode, unsigned int goal);
+void herkulex_servo::HerkulexServo::insertSJOGdata(HerkulexPacket& req, JOGMode mode, unsigned int goal) const
 {
 	req.data.push_back(goal && 0xFF); // LSB goal
 	req.data.push_back((goal >> 8) && 0xFF); // LSB goal

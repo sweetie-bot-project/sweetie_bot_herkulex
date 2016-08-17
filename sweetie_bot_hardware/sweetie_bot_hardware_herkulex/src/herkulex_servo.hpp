@@ -1,7 +1,18 @@
 #ifndef  HERKULEX_SERVO_HPP
 #define  HERKULEX_SERVO_HPP
 
+#include <string>
+#include <vector>
+#include <unordered_map>
+
+#include <boost/bind.hpp>
+#include <boost/function.hpp>
+
+#include <orocos/sweetie_bot_hardware_herkulex_msgs/typekit/HerkulexPacket.h>
+
 namespace herkulex_servo {
+
+	typedef sweetie_bot_hardware_herkulex_msgs::HerkulexPacket HerkulexPacket;
 
 	struct Register {
 		signed char reg_num; // acording to manual
@@ -26,15 +37,27 @@ namespace herkulex_servo {
 		public:
 			RegisterMapper(const std::vector<Register>& regs);
 
-			const Register& getByName(const std::string name) const { return name_map.at(name); }
+			const Register& getByName(const std::string& name) const { return *name_map.at(name); }
 			const Register& getByNum(unsigned int num) const { return registers.at(num); }
-			const Register& getByEEPadr(unsigned int eep_adr) const { return eep_map.at(eep_adr); }
-			const Register& getByRAMadr(unsigned int ram_adr) const { return ram_map.at(ram_adr); }
+			const Register& getByEEPadr(unsigned int eep_adr) const { return *eep_map.at(eep_adr); }
+			const Register& getByRAMadr(unsigned int ram_adr) const { return *ram_map.at(ram_adr); }
 
-			const Register * findByName(const std::string name) const { auto reg = name_map.find(name); return (reg != name_map.end()) ? reg : nullptr; }
-			const Register * findByNum(unsigned int num) const { if (num < registers.size()) return &registers[num] else return nullptr; }
-			const Register * findByEEPadr(unsigned int eep_adr) const { auto reg = eep_map.find(eep_adr); return (reg != eep_map.end()) ? reg : nullptr; }
-			const Register * findByRAMadr(unsigned int ram_adr) const { auto reg = ram_map.find(ram_adr); return (reg != ram_map.end()) ? reg : nullptr; }
+			const Register * findByName(const std::string& name) const { 
+				auto reg = name_map.find(name); 
+				return (reg != name_map.end()) ? reg->second : nullptr; 
+			}
+			const Register * findByNum(unsigned int num) const { 
+				if (num < registers.size()) return &registers[num]; 
+				else return nullptr; 
+			}
+			const Register * findByEEPaddr(unsigned int eep_adr) const { 
+				auto reg = eep_map.find(eep_adr); 
+				return (reg != eep_map.end()) ? reg->second : nullptr; 
+			}
+			const Register * findByRAMaddr(unsigned int ram_adr) const { 
+				auto reg = ram_map.find(ram_adr); 
+				return (reg != ram_map.end()) ? reg->second : nullptr; 
+			}
 	};
 
 	class HerkulexServo
@@ -85,8 +108,8 @@ namespace herkulex_servo {
 				unsigned char flags;
 
 				JOGMode() { flags = 0; }
-				JOGMode(unsigned char _flags) flags(_flags) {}
-				unsigned char() { return flags & JOGMODE_MASK; }
+				JOGMode(unsigned char _flags) : flags(_flags) {}
+				operator unsigned char() const { return flags & JOGMODE_MASK; }
 
 				enum {
 					STOP             = 0x01, // 0b00000001
@@ -106,6 +129,8 @@ namespace herkulex_servo {
 				};
 			};
 
+			typedef  boost::function<bool(const sweetie_bot_hardware_herkulex_msgs::HerkulexPacket&)> AckCallback;
+
 		protected:
 			std::string name;
 			unsigned int hw_id;
@@ -121,28 +146,33 @@ namespace herkulex_servo {
 			bool ackStatReturn_impl(const HerkulexPacket& ack, Status& status) const;
 
 		public:
-			HerkulexServo(const std::string _name&, const RegisterMapper& mapper, unsigned int _hw_id, bool _reverse, int _offset);
+			HerkulexServo(const std::string& _name, const RegisterMapper& mapper, unsigned int _hw_id, bool _reverse, int _offset);
 
-			unsigned int getID() { return hw_id; }
-			bool isReverse() { return reverse; }
-			bool getOffset() { return offset; }
+			// data fields access
+			const std::string& getName() const { return name; }
+			unsigned int getID() const { return hw_id; }
+			bool isReverse() const { return reverse; }
+			bool getOffset() const { return offset; }
 
+			// Request packets generations.
 			void reqRead_ram(HerkulexPacket& req, const std::string& reg) const;
-			void reqRead_epp(HerkulexPacket& req, string const std::string& reg) const;
-			void reqWrite_raw(HerkulexPacket& req, const std::string& reg, unsigned int val) const;
-			void reqWrite_epp(HerkulexPacket& req, string const std::string&, unsigned int val) const;
+			void reqRead_eep(HerkulexPacket& req, const std::string& reg) const;
+			void reqWrite_ram(HerkulexPacket& req, const std::string& reg, unsigned int val) const;
+			void reqWrite_eep(HerkulexPacket& req, const std::string&, unsigned int val) const;
 			void reqWriteClearStatus(HerkulexPacket& req) const;
 			void reqStat(HerkulexPacket& req) const;
 			void reqRollback(HerkulexPacket& req) const;
 			void reqReset(HerkulexPacket& req) const;
 
+			// JOG command generation
 			void reqIJOGheader(HerkulexPacket& req) const;
 			void insertIJOGdata(HerkulexPacket& req, JOGMode mode, unsigned int goal, unsigned int playtime) const;
 			void reqSJOGheader(HerkulexPacket& req, unsigned int playtime) const;
 			void insertSJOGdata(HerkulexPacket& req, JOGMode mode, unsigned int goal) const;
 
+			// Acknowelege packets parse functions.
 			bool ackRead_ram(const HerkulexPacket& ack, const std::string& reg, unsigned int& val, Status& status) const;
-			bool ackRead_epp(const HerkulexPacket& ack, const std::string& reg, unsigned int& val, Status& status) const;
+			bool ackRead_eep(const HerkulexPacket& ack, const std::string& reg, unsigned int& val, Status& status) const;
 			bool ackWrite_ram(const HerkulexPacket& ack, Status& status) const {
 				if (ack.command != HerkulexPacket::ACK_RAM_WRITE) return false;
 				return ackStatReturn_impl(ack, status);
@@ -164,8 +194,35 @@ namespace herkulex_servo {
 				return ackStatReturn_impl(ack, status);
 			}
 			bool ackReset(const HerkulexPacket& ack, Status& status) const {
-				if (ack.command != HerkulexPacket::ACK_RESET) return false;
+				if (ack.command != HerkulexPacket::ACK_REBOOT) return false;
 				return ackStatReturn_impl(ack, status);
+			}
+
+			// Acknowlege packets parse callbacks. Callback can be stored in AckCallback variable and passed to function to perform
+			// multiple parse packets attemts.
+			AckCallback ackCallbackRead_ram(const std::string& reg, unsigned int& val, Status& status) const {
+				return boost::bind(&HerkulexServo::ackRead_ram, this, _1, boost::cref(reg), boost::ref(val), boost::ref(status));
+			}
+			AckCallback ackCallbackRead_epp(const std::string& reg, unsigned int& val, Status& status) const {
+				return boost::bind(&HerkulexServo::ackRead_eep, this, _1, boost::cref(reg), boost::ref(val), boost::ref(status));
+			}
+			AckCallback ackCallbackWrite_ram(Status& status) const {
+				return boost::bind(&HerkulexServo::ackWrite_ram, this, _1, boost::ref(status));
+			}
+			AckCallback ackCallbackWrite_eep(Status& status) const {
+				return boost::bind(&HerkulexServo::ackWrite_eep, this, _1, boost::ref(status));
+			}
+			AckCallback ackCallbackWriteClearStatus(Status& status) const {
+				return boost::bind(&HerkulexServo::ackWriteClearStatus, this, _1, boost::ref(status));
+			}
+			AckCallback ackCallbackStat(Status& status) const {
+				return boost::bind(&HerkulexServo::ackStat, this, _1, boost::ref(status));
+			}
+			AckCallback ackCallbackRollback(Status& status) const {
+				return boost::bind(&HerkulexServo::ackRollback, this, _1, boost::ref(status));
+			}
+			AckCallback ackCallbackReset(Status& status) const {
+				return boost::bind(&HerkulexServo::ackReset, this, _1, boost::ref(status));
 			}
 
 			virtual double convertVelRawToRad(unsigned int raw) const = 0;
@@ -176,20 +233,19 @@ namespace herkulex_servo {
 			virtual unsigned int convertTimeSecToRaw(double pos) const = 0;
 
 			virtual void reqPosVel(HerkulexPacket& req) const = 0;
-			virtual bool ackPosVel(HerkulexPacket& ack, double& pos, double& vel, Status& status) = 0;
+			virtual bool ackPosVel(const HerkulexPacket& ack, double& pos, double& vel, Status& status) const = 0;
+			AckCallback ackCallbackPosVel(double& pos, double& vel, Status& status) const {
+				return boost::bind(&HerkulexServo::ackPosVel, this, _1, boost::ref(pos), boost::ref(vel), boost::ref(status));
+			}
+
 			virtual void reqState(HerkulexPacket& req) const = 0;
-			virtual bool ackState(HerkulexPacket& ack, State& state, Status& status) const = 0;
+			virtual bool ackState(const HerkulexPacket& ack, State& state, Status& status) const = 0;
+			AckCallback ackCallbackState(State& state, Status& status) const {
+				return boost::bind(&HerkulexServo::ackState, this, _1, boost::ref(state), boost::ref(status));
+			}
 	};
 
-	class HerkulexServoArray : public std::unordered_map<std::string, std::shared_ptr<HerkulexServo> >
-	{
-		public: 
-			HerkulexServoArray() {}
-
-			void addServo(std::shared_ptr<HerkulexServo> ptr);
-			const HerkulexServo& getServo(const std::string name) { return *(this->at(name)); }
-	};
-
+	typedef std::unordered_map< std::string, std::shared_ptr<HerkulexServo> > HerkulexServoArray;
 };
 			
 #endif  /*HERKULEX_SERVO_HPP*/

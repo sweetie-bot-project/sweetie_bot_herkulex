@@ -22,14 +22,14 @@ const unsigned int HerkulexDriver::BUFFER_SIZE = 223;
 const unsigned int HerkulexDriver::HEADER_SIZE = 7;
 
 HerkulexDriver::HerkulexDriver(std::string const& name) : 
-	TaskContext(name),
-	cmdAck("cmdAck"),
+	TaskContext(name, PreOperational),
+	receivePacketDL("receivePacket"),
 	port_fd(-1)
 {
-	this->addOperation("cmdReq", &HerkulexDriver::cmdReq, this, OwnThread) 
+	this->addOperation("sendPacket", &HerkulexDriver::sendPacketDL, this, OwnThread) 
 		.doc("Send packet to servos.") 
 		.arg("pkt", "HerkulexPacket to send.");
-	this->requires()->addOperationCaller(cmdAck);
+	this->requires()->addOperationCaller(receivePacketDL);
 
 	this->addProperty("port_name", port_name_prop) 
 		.doc("Serial port device.");
@@ -225,7 +225,9 @@ void HerkulexDriver::updateHook()
 						if (checksum == recv_pkt_checksum1) {
 							// send packet
 							log(RealTime) << "ACK packet is successfully received: servo = " << std::hex << recv_pkt.servo_id << " cmd = " << recv_pkt.command << std::dec << endlog();
-							this->cmdAck(recv_pkt);
+							if (receivePacketDL.ready()) {
+								this->receivePacketDL(recv_pkt);
+							}
 						}
 						else {
 							log(Warning) << "ACK packet checksum1 error, servo = " << std::hex << recv_pkt.servo_id << " cmd = " << recv_pkt.command << std::dec << endlog();
@@ -239,14 +241,16 @@ void HerkulexDriver::updateHook()
 	} // if (activity->isUpdated(port_fd))
 }
 
-bool HerkulexDriver::cmdReq(const sweetie_bot_hardware_herkulex_msgs::HerkulexPacket& pkt) 
+void HerkulexDriver::sendPacketDL(const sweetie_bot_hardware_herkulex_msgs::HerkulexPacket& pkt) 
 {
 	char buffer[BUFFER_SIZE];
 	size_t pkt_size = HEADER_SIZE + pkt.data.size();
 
+	if (!isConfigured()) return;
+
 	if (pkt_size > BUFFER_SIZE) {
 		log(Error) << "REQ packet is too large." << endlog(); 
-		return false;
+		return;
 	}
 
 	// prepare send buffer
@@ -271,14 +275,13 @@ bool HerkulexDriver::cmdReq(const sweetie_bot_hardware_herkulex_msgs::HerkulexPa
 		if (retval == -1) {
 			log(Error) << "Write to serial port failed: " << strerror(errno) << endlog(); 
 			this->exception();
-			return false;
+			return;
 		}
 		bytes_written += retval;
 	}
 	while (bytes_written < pkt_size);
 
 	log(RealTime) << "REQ packet is successfully sended: servo = " << std::hex << pkt.servo_id << " cmd = " << pkt.command << std::dec << endlog();
-	return true;
 }
 
 void HerkulexDriver::stopHook() 

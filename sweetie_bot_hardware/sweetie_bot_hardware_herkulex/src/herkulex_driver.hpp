@@ -33,9 +33,9 @@ class HerkulexDriver : public RTT::TaskContext
 
 	protected:
 		// Operations: provided
-		bool cmdReq(const sweetie_bot_hardware_herkulex_msgs::HerkulexPacket& pkt);
+		void sendPacketDL(const sweetie_bot_hardware_herkulex_msgs::HerkulexPacket& pkt);
 		// Operations: required
-		RTT::OperationCaller<void(const sweetie_bot_hardware_herkulex_msgs::HerkulexPacket& pkt)> cmdAck;
+		RTT::OperationCaller<void(const sweetie_bot_hardware_herkulex_msgs::HerkulexPacket& pkt)> receivePacketDL;
 
 	public:
 		HerkulexDriver(std::string const& name);
