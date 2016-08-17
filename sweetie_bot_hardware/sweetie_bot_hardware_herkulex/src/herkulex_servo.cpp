@@ -193,8 +193,8 @@ void herkulex_servo::HerkulexServo::reqIJOGheader(HerkulexPacket& req) const
 
 void herkulex_servo::HerkulexServo::insertIJOGdata(HerkulexPacket& req, JOGMode mode, unsigned int goal, unsigned int playtime) const
 {
-	req.data.push_back(goal && 0xFF); // LSB goal
-	req.data.push_back((goal >> 8) && 0xFF); // LSB goal
+	req.data.push_back(goal & 0xFF); // LSB goal
+	req.data.push_back((goal >> 8) & 0xFF); // LSB goal
 	req.data.push_back(mode & JOGMode::JOGMODE_MASK); // mode
 	req.data.push_back(hw_id); // ID
 	req.data.push_back(playtime); //playtime
@@ -210,8 +210,8 @@ void herkulex_servo::HerkulexServo::reqSJOGheader(HerkulexPacket& req, unsigned 
 
 void herkulex_servo::HerkulexServo::insertSJOGdata(HerkulexPacket& req, JOGMode mode, unsigned int goal) const
 {
-	req.data.push_back(goal && 0xFF); // LSB goal
-	req.data.push_back((goal >> 8) && 0xFF); // LSB goal
+	req.data.push_back(goal & 0xFF); // LSB goal
+	req.data.push_back((goal >> 8) & 0xFF); // LSB goal
 	req.data.push_back(mode); // mode
 	req.data.push_back(hw_id); // ID
 }

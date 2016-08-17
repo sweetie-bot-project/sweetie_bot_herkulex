@@ -17,6 +17,9 @@ std::ostream& resetfmt(std::ostream& s) {
 }
 
 const unsigned long HerkulexArray::READ_ERROR = 0x10000;
+const unsigned int HerkulexArray::JOG_STOP = HerkulexServo::JOGMode::STOP;
+const unsigned int HerkulexArray::JOG_POSITION = HerkulexServo::JOGMode::POSITION_CONTROL;
+const unsigned int HerkulexArray::JOG_SPEED = HerkulexServo::JOGMode::SPEED_CONTROL;
 
 HerkulexArray::HerkulexArray(std::string const& name) : 
 	TaskContext(name, PreOperational),
@@ -41,6 +44,9 @@ HerkulexArray::HerkulexArray(std::string const& name) :
 	// INTERFACE
 	// CONSTANTS
 	this->addConstant("READ_ERROR", READ_ERROR);
+	this->addConstant("JOG_STOP", JOG_STOP);
+	this->addConstant("JOG_POSITION", JOG_POSITION);
+	this->addConstant("JOG_SPEED", JOG_SPEED);
 
 	// PROPERTIES
 	this->addProperty("servos", servos_prop) 
@@ -69,9 +75,10 @@ HerkulexArray::HerkulexArray(std::string const& name) :
 	
 	// Application inteface.
 	this->addOperation("listServos", &HerkulexArray::listServos, this, ClientThread)
-		.doc("Return the list of registered servos.");
+		.doc("Return registered servo list.");
 	this->addOperation("listServoRegistersRAM", &HerkulexArray::listServoRegistersRAM, this, ClientThread)
-		.doc("Return the list of servo registers.");
+		.doc("Return servo register list.")
+		.arg("servo", "Servo name.");
 
 	this->addOperation("setRegisterRAM", &HerkulexArray::setRegisterRAM, this, OwnThread)
 		.doc("Set servo register value. Return true on success.")
@@ -82,6 +89,19 @@ HerkulexArray::HerkulexArray(std::string const& name) :
 		.doc("Get servo register value. Return register raw value, on error return READ_ERROR.")
 		.arg("servo", "Servo name.")
 		.arg("reg", "Register.");
+
+	this->addOperation("setGoalRaw", &HerkulexArray::setGoalRaw, this, OwnThread)
+		.doc("Set servo goal. Return true on success.")
+		.arg("servo", "Servo name.")
+		.arg("mode", "JOG mode (raw uint8): JOG_STOP, JOG_POSITION, JOG_SPEED, LED_FLAGS.")
+		.arg("goal", "New goal position or speed (raw uint16).")
+		.arg("playtime", "Playtime (servo ticks).");
+	this->addOperation("setGoal", &HerkulexArray::setGoal, this, OwnThread)
+		.doc("Set servo goal. Return true on success.")
+		.arg("servo", "Servo name.")
+		.arg("mode", "JOG mode (raw uint8): JOG_STOP, JOG_POSITION, JOG_SPEED, LED_FLAGS.")
+		.arg("goal", "New goal position (rad) or speed (rad/s).")
+		.arg("playtime", "Playtime (s).");
 
 	this->addOperation("getStatus", &HerkulexArray::getStatus, this, OwnThread)
 		.doc("Get servo status. Return content of status registers (byte0=status_error, byte1=status_detail) or READ_ERROR.")
@@ -303,6 +323,37 @@ bool HerkulexArray::setRegisterRAM(const std::string& servo, const std::string& 
 		HerkulexServo::Status status;
 		s.reqWrite_ram(req_pkt, reg, val);
 		return sendRequest(req_pkt, s.ackCallbackWrite_ram(status));
+	} 
+	catch (const std::out_of_range& e) {
+		log(Error) << e.what() << endlog();
+		return false;
+	}
+}
+
+bool HerkulexArray::setGoalRaw(const std::string& servo, unsigned int mode, unsigned int goal, unsigned int playtime)
+{
+	Logger::In("HerkulexArray");
+	try {
+		const HerkulexServo& s = getServo(servo);
+		HerkulexServo::Status status;
+		s.reqIJOGheader(req_pkt);
+		s.insertIJOGdata(req_pkt, mode, goal, playtime);
+		return sendRequest(req_pkt, s.ackCallbackIJOG(status));
+	} 
+	catch (const std::out_of_range& e) {
+		log(Error) << e.what() << endlog();
+		return false;
+	}
+}
+bool HerkulexArray::setGoal(const std::string& servo, unsigned int mode, double goal, double playtime)
+{
+	Logger::In("HerkulexArray");
+	try {
+		const HerkulexServo& s = getServo(servo);
+		unsigned int goal_raw;
+		if (mode & HerkulexServo::JOGMode::SPEED_CONTROL) goal_raw = s.convertVelRadToRaw(goal);
+		else goal_raw = s.convertPosRadToRaw(goal);
+		return setGoalRaw(servo, mode, goal_raw, s.convertTimeSecToRaw(playtime));
 	} 
 	catch (const std::out_of_range& e) {
 		log(Error) << e.what() << endlog();
@@ -603,6 +654,7 @@ bool HerkulexArray::reqPosVel(HerkulexPacket& req, const std::string servo)
 {
 	if (!this->isConfigured()) return false;
 	getServo(servo).reqPosVel(req);
+	return true;
 }
 
 bool HerkulexArray::ackPosVel(HerkulexPacket& ack, const std::string servo, double& pos, double& vel) 

@@ -33,7 +33,11 @@ class HerkulexArray : public RTT::TaskContext
 		};
 
 	protected:
+		// constants
 		static const unsigned long READ_ERROR;
+		static const unsigned int JOG_STOP;
+		static const unsigned int JOG_POSITION;
+		static const unsigned int JOG_SPEED;
 
 	protected:
 		// cached servo configuration
@@ -74,6 +78,9 @@ class HerkulexArray : public RTT::TaskContext
 		unsigned long getRegisterRAM(const std::string& servo, const std::string& reg);
 		bool setRegisterRAM(const std::string& servo, const std::string& reg, unsigned int val);
 
+		bool setGoalRaw(const std::string& servo, unsigned int mode, unsigned int goal, unsigned int playtime);
+		bool setGoal(const std::string& servo, unsigned int mode, double goal, double playtime);
+
 		unsigned long getStatus(const std::string& servo);
 		bool clearStatus(const std::string& servo);
 
@@ -97,7 +104,7 @@ class HerkulexArray : public RTT::TaskContext
 		// interrupt waiting
 		bool breakLoop();
 		// Asyncronous and Syncronous package exchange with servo array.
-		void sendPacket(const HerkulexPacket& req);
+		void sendPacket(const herkulex_servo::HerkulexPacket& req);
 		bool sendRequest(const herkulex_servo::HerkulexPacket&, herkulex_servo::HerkulexServo::AckCallback);
 		// Helper fuctions
 		std::string statusToString(herkulex_servo::HerkulexServo::Status status) ;

@@ -11,7 +11,7 @@
 		</simple>
 		<simple name="offset" type="ulong">
 			<description>Servo zero position offset (raw).</description>
-			<value>0</value>
+			<value>512</value>
 		</simple>
 		<simple name="reverse" type="boolean">
 			<description>Reverse direction flag.</description>
@@ -20,7 +20,7 @@
 		<struct name="registers_init" type="PropertyBag">
 			<description>Values written to servo RAM register after reboot.</description>
 			<simple name="torque_control" type="ulong">
-				<description>Servo opertional state: ON, BRAKE, FREE</description>
+				<description>Servo opertional state: ON=96, BRAKE=64, FREE=0</description>
 				<value>64</value>
 			</simple>
 		</struct>
@@ -33,7 +33,7 @@
 		</simple>
 		<simple name="offset" type="ulong">
 			<description>Servo zero position offset (raw).</description>
-			<value>0</value>
+			<value>512</value>
 		</simple>
 		<simple name="reverse" type="boolean">
 			<description>Reverse direction flag.</description>

@@ -197,6 +197,15 @@ namespace herkulex_servo {
 				if (ack.command != HerkulexPacket::ACK_REBOOT) return false;
 				return ackStatReturn_impl(ack, status);
 			}
+			// JOG acknowlege packet parse
+			bool ackIJOG(const HerkulexPacket& ack, Status& status) const {
+				if (ack.command != HerkulexPacket::ACK_I_JOG) return false;
+				return ackStatReturn_impl(ack, status);
+			}
+			bool ackSJOG(const HerkulexPacket& ack, Status& status) const {
+				if (ack.command != HerkulexPacket::ACK_S_JOG) return false;
+				return ackStatReturn_impl(ack, status);
+			}
 
 			// Acknowlege packets parse callbacks. Callback can be stored in AckCallback variable and passed to function to perform
 			// multiple parse packets attemts.
@@ -223,6 +232,12 @@ namespace herkulex_servo {
 			}
 			AckCallback ackCallbackReset(Status& status) const {
 				return boost::bind(&HerkulexServo::ackReset, this, _1, boost::ref(status));
+			}
+			AckCallback ackCallbackIJOG(Status& status) const {
+				return boost::bind(&HerkulexServo::ackIJOG, this, _1, boost::ref(status));
+			}
+			AckCallback ackCallbackSJOG(Status& status) const {
+				return boost::bind(&HerkulexServo::ackSJOG, this, _1, boost::ref(status));
 			}
 
 			virtual double convertVelRawToRad(unsigned int raw) const = 0;
