@@ -1,5 +1,9 @@
 #include <iostream>
 
+extern "C" {
+#include <unistd.h>
+}
+
 #include <rtt/Component.hpp>
 #include <rtt/Logger.hpp>
 
@@ -438,9 +442,13 @@ bool HerkulexArray::resetAllServos()
 		// reset all servos
 		broadcast->reqReset(req_pkt);
 		sendPacket(req_pkt);
-		// set ack policy
-		broadcast->reqWrite_ram(req_pkt, "ack_policy", 2);
-		sendPacket(req_pkt);
+
+		//TODO replce with OROCOS timer 
+		sleep(1);
+
+		// set ack policy NOT WORKING
+		//broadcast->reqWrite_ram(req_pkt, "ack_policy", 2);
+		//sendPacket(req_pkt);
 		// global registers init (REMOVED: better set registers value individually)
 		/*const RegisterValues * reg_init = servos_init.at("broadcast");
 		for(RegisterValues::const_iterator r = reg_init->begin(); r != reg_init->end(); r++) {
@@ -452,6 +460,15 @@ bool HerkulexArray::resetAllServos()
 		bool success = true;
 		for(HerkulexServoArray::const_iterator iter = servos.begin(); iter != servos.end(); iter++) {
 			const HerkulexServo * s = iter->second.get();
+
+			//set ack policy to always reply
+			s->reqWrite_ram(req_pkt, "ack_policy", 2);
+			if (!sendRequest(req_pkt, s->ackCallbackWrite_ram(status))) {
+				log(Error) << "Write " << s->getName() << " ack_policy failed. Skip servo." << endlog();
+				success = false;
+				continue;
+			}
+
 			if ( !setServoRegisters(s, servos_init.at("broadcast").get()) || 
 				 !setServoRegisters(s, servos_init.at(s->getName()).get()) ) 
 			{
@@ -548,7 +565,7 @@ void HerkulexArray::printServoStatus(const std::string& servo)
 		s.reqStat(req_pkt);
 		bool success = sendRequest(req_pkt, s.ackCallbackStat(status));
 		if (success) {
-			std::cout << servo << " ID = " << std::hex << s.getID() << std::dec << statusToString(status) << std::endl;
+			std::cout << servo << " ID = " << std::hex << s.getID() << std::dec << " \t" << statusToString(status) << std::endl;
 		}
 		else {
 			log(Error) << "Unable query status of " << servo << " servo." << endlog();
@@ -627,9 +644,9 @@ void HerkulexArray::printAllRegistersRAM(const std::string& servo)
 				else {
 					std::cout << r->name << " QUERY ERROR" << std::endl;
 				}
-				std::cout << std::dec << std::endl;
 			}
 		}
+		std::cout << std::dec << std::endl;
 	}
 	catch (const std::out_of_range& e) {
 		log(Error) << e.what() << endlog();

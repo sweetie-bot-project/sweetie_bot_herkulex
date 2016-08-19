@@ -1,6 +1,7 @@
 #include "herkulex_driver.hpp"
 
 extern "C" {
+#include <stdint.h>
 #include <unistd.h>
 #include <termios.h>
 #include <errno.h>
@@ -62,7 +63,7 @@ bool HerkulexDriver::configureHook()
 		log(Error) << "tcgetattr() failed: " << strerror(errno) << endlog(); 
 		return false;
 	}
-	/*
+	
 	// 8-bits, 1 STOP bit, enable receiver, ignore modem lines
 	tty.c_cflag = CS8 | CREAD | CLOCAL; 
 	// no signaling chars, no echo, no canonical processing
@@ -70,10 +71,7 @@ bool HerkulexDriver::configureHook()
 	// no special input processing
 	tty.c_iflag = 0;
 	// no special output processing
-	tty.c_oflag = 0;*/
-	// 8-bits, 1 STOP bit, enable receiver, ignore modem lines
-	cfmakeraw(&tty);
-	tty.c_cflag = CREAD | CLOCAL; 
+	tty.c_oflag = 0;
 	// set speed
 	int ret;
 	switch (this->baudrate_prop) {
@@ -152,7 +150,7 @@ void HerkulexDriver::updateHook()
 
 	if (activity->isUpdated(port_fd)) {
 		// read new data on port
-		char buffer[HerkulexPacket::HEADER_SIZE + HerkulexPacket::DATA_SIZE];
+		unsigned char buffer[HerkulexPacket::HEADER_SIZE + HerkulexPacket::DATA_SIZE];
 		ssize_t buffer_index, buffer_size;
 
 		ssize_t retval = TEMP_FAILURE_RETRY(read(port_fd, buffer, sizeof(buffer)));
@@ -174,7 +172,12 @@ void HerkulexDriver::updateHook()
 
 		// parse new data in buffer
 		for(; buffer_index < buffer_size; buffer_index++) {
-			char c = buffer[buffer_index];
+			unsigned char c = buffer[buffer_index];
+
+			/*if (log().getLogLevel() >= Logger::Debug) {
+				Logger::In("HerkulexDriver");
+				log(Debug) << "c = " << std::hex << (unsigned int) c << std::dec << " state = " << recv_state << endlog();
+			}*/
 
 			switch (recv_state) {
 				case HEADER1:
@@ -200,10 +203,13 @@ void HerkulexDriver::updateHook()
 
 				case CMD:
 					switch (c) {
+						//TODO ACK mask
 						case sweetie_bot_hardware_herkulex_msgs::HerkulexPacket::ACK_EEP_READ:
 						case sweetie_bot_hardware_herkulex_msgs::HerkulexPacket::ACK_RAM_READ:
 						case sweetie_bot_hardware_herkulex_msgs::HerkulexPacket::ACK_EEP_WRITE:
 						case sweetie_bot_hardware_herkulex_msgs::HerkulexPacket::ACK_RAM_WRITE:
+						case sweetie_bot_hardware_herkulex_msgs::HerkulexPacket::ACK_S_JOG:
+						case sweetie_bot_hardware_herkulex_msgs::HerkulexPacket::ACK_I_JOG:
 						case sweetie_bot_hardware_herkulex_msgs::HerkulexPacket::ACK_STAT:
 						case sweetie_bot_hardware_herkulex_msgs::HerkulexPacket::ACK_ROLLBACK:
 						case sweetie_bot_hardware_herkulex_msgs::HerkulexPacket::ACK_REBOOT:
@@ -273,7 +279,7 @@ void HerkulexDriver::updateHook()
 
 void HerkulexDriver::sendPacketDL(const sweetie_bot_hardware_herkulex_msgs::HerkulexPacket& pkt) 
 {
-	char buffer[HerkulexPacket::HEADER_SIZE + HerkulexPacket::DATA_SIZE];
+	unsigned char buffer[HerkulexPacket::HEADER_SIZE + HerkulexPacket::DATA_SIZE];
 	size_t pkt_size = HerkulexPacket::HEADER_SIZE + pkt.data.size();
 
 	if (!isConfigured()) return;
