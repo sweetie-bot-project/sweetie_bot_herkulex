@@ -21,7 +21,7 @@
 			<description>Values written to servo RAM register after reboot.</description>
 			<simple name="torque_control" type="ulong">
 				<description>Servo opertional state: ON=96, BRAKE=64, FREE=0</description>
-				<value>64</value>
+				<value>96</value>
 			</simple>
 		</struct>
 	</struct>
@@ -29,7 +29,7 @@
 		<description>Test servo entry.</description>
 		<simple name="hw_id" type="ulong">
 			<description>Servo hardware ID.</description>
-			<value>253</value>
+			<value>0</value>
 		</simple>
 		<simple name="offset" type="ulong">
 			<description>Servo zero position offset (raw).</description>
@@ -44,10 +44,6 @@
 			<simple name="led_control" type="ulong">
 				<description>Led status.</description>
 				<value>1</value>
-			</simple>
-			<simple name="torque_control" type="ulong">
-				<description>Servo opertional state: ON=96, BRAKE=64, FREE=0</description>
-				<value>96</value>
 			</simple>
 		</struct>
 	</struct>
