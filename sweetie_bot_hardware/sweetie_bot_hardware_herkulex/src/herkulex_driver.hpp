@@ -12,8 +12,8 @@ class HerkulexDriver : public RTT::TaskContext
 		enum ReceiverState {
 			HEADER1, HEADER2, PACKET_SIZE, SERVO_ID, CMD, CHECKSUM1, CHECKSUM2, DATA 
 		};
-		static const unsigned int BUFFER_SIZE;
-		static const unsigned int HEADER_SIZE;
+		//static const unsigned int BUFFER_SIZE;
+		//static const unsigned int HEADER_SIZE;
 
 	protected:
 		// Port file handler

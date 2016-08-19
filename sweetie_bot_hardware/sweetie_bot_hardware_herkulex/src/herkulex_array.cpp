@@ -11,6 +11,7 @@
 using namespace herkulex_servo;
 using namespace RTT;
 
+//TODO Where should be this code?
 std::ostream& resetfmt(std::ostream& s) {
 	s.copyfmt(std::ios(NULL)); 
 	return s;

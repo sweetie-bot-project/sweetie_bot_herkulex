@@ -15,11 +15,17 @@ extern "C" {
 #include <rtt/extras/FileDescriptorActivity.hpp>
 #include <rtt/Logger.hpp>
 
+//TODO Where should be this code?
+std::ostream& resetfmt(std::ostream& s) {
+	s.copyfmt(std::ios(NULL)); 
+	return s;
+}
 
 using namespace RTT;
+using sweetie_bot_hardware_herkulex_msgs::HerkulexPacket;
 
-const unsigned int HerkulexDriver::BUFFER_SIZE = 223;
-const unsigned int HerkulexDriver::HEADER_SIZE = 7;
+//const unsigned int HerkulexDriver::BUFFER_SIZE = 223;
+//const unsigned int HerkulexDriver::HEADER_SIZE = 7;
 
 HerkulexDriver::HerkulexDriver(std::string const& name) : 
 	TaskContext(name, PreOperational),
@@ -44,7 +50,9 @@ bool HerkulexDriver::configureHook()
 {
 	struct termios tty;
 
-	port_fd = open(this->port_name_prop.c_str(), O_RDWR | O_NOCTTY | O_SYNC );
+	Logger::In("HerkulexDriver");
+
+	port_fd = open(this->port_name_prop.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK );
 	if (port_fd == -1) {
 		log(Error) << "open() serial port \"" << this->port_name_prop << "\" failed: " << strerror(errno) << endlog(); 
 		return false;
@@ -107,46 +115,62 @@ bool HerkulexDriver::configureHook()
 	extras::FileDescriptorActivity * activity = dynamic_cast<extras::FileDescriptorActivity *>(this->getActivity());
 	if (! activity) {
 		log(Error) << "Incompatible activity type."  << endlog(); 
+		return false;
 	}
 	activity->watch(port_fd);
 	// reserve memory
-	recv_pkt.data.reserve(BUFFER_SIZE - HEADER_SIZE);
+	recv_pkt.data.reserve(HerkulexPacket::DATA_SIZE);
 	return true;
 }
 
 bool HerkulexDriver::startHook()
 {
 	// flush input buffer
-	tcflush(port_fd, TCIFLUSH);
+	int retval = tcflush(port_fd, TCIFLUSH);
+	if (retval == -1) {
+		log(Error) << "tcflush() failed:" << strerror(errno) << endlog(); 
+		return false;
+	}
 	// wait for header
 	recv_state = HEADER1;
+	return true;
 }
 
 void HerkulexDriver::updateHook()
 {
 	extras::FileDescriptorActivity * activity = dynamic_cast<extras::FileDescriptorActivity *>(this->getActivity());
 	if (! activity) {
+		Logger::In("HerkulexDriver");
 		log(Error) << "Incompatible activity type."  << endlog(); 
 		this->exception();
 	}
 	if (activity->hasError()) {
+		Logger::In("HerkulexDriver");
 		log(Error) << "FileDescriptorActivity error."  << endlog(); 
 		this->exception();
 	}
 
 	if (activity->isUpdated(port_fd)) {
 		// read new data on port
-		char buffer[BUFFER_SIZE];
+		char buffer[HerkulexPacket::HEADER_SIZE + HerkulexPacket::DATA_SIZE];
 		ssize_t buffer_index, buffer_size;
 
 		ssize_t retval = TEMP_FAILURE_RETRY(read(port_fd, buffer, sizeof(buffer)));
 		if (retval == 0) return;
 		else if (retval == -1) {
+			Logger::In("HerkulexDriver");
 			log(Error) << "Read serial port failed:" << strerror(errno) << endlog(); 
 			this->exception();
 		}
 		buffer_size = retval;
 		buffer_index = 0;
+
+		if (log().getLogLevel() >= Logger::Debug) {
+			Logger::In("HerkulexDriver");
+			log(Debug) << "READ on serial port (" << buffer_size << " bytes):" << std::hex << std::setw(2) << std::setfill('0');
+			for (int i = 0; i < buffer_size; i++) log(Debug) << (unsigned int) buffer[i] << " ";
+			log(Debug) << resetfmt << Logger::nl << "STATE = " << recv_state << endlog();
+		}
 
 		// parse new data in buffer
 		for(; buffer_index < buffer_size; buffer_index++) {
@@ -178,6 +202,8 @@ void HerkulexDriver::updateHook()
 					switch (c) {
 						case sweetie_bot_hardware_herkulex_msgs::HerkulexPacket::ACK_EEP_READ:
 						case sweetie_bot_hardware_herkulex_msgs::HerkulexPacket::ACK_RAM_READ:
+						case sweetie_bot_hardware_herkulex_msgs::HerkulexPacket::ACK_EEP_WRITE:
+						case sweetie_bot_hardware_herkulex_msgs::HerkulexPacket::ACK_RAM_WRITE:
 						case sweetie_bot_hardware_herkulex_msgs::HerkulexPacket::ACK_STAT:
 						case sweetie_bot_hardware_herkulex_msgs::HerkulexPacket::ACK_ROLLBACK:
 						case sweetie_bot_hardware_herkulex_msgs::HerkulexPacket::ACK_REBOOT:
@@ -185,8 +211,10 @@ void HerkulexDriver::updateHook()
 							recv_state = CHECKSUM1;
 							break;
 						default:
-							recv_pkt.command = c;
-							log(Warning) << "ACK packet type is unknown, servo = " << std::hex << recv_pkt.servo_id << " cmd = " << recv_pkt.command << std::dec << endlog();
+							{
+								Logger::In("HerkulexDriver");
+								log(Warning) << "ACK packet type is unknown, servo = " << std::hex << recv_pkt.servo_id << " cmd = " << recv_pkt.command << std::dec << endlog();
+							}
 							recv_state = HEADER1;
 							break;
 					}
@@ -199,7 +227,10 @@ void HerkulexDriver::updateHook()
 
 				case CHECKSUM2:
 					if ( c != (~recv_pkt_checksum1 & 0xFE) ) {
-						log(Warning) << "ACK packet, checksum2 error, servo = " << std::hex << recv_pkt.servo_id << " cmd = " << recv_pkt.command << std::dec << endlog();
+						{
+							Logger::In("HerkulexDriver");
+							log(Warning) << "ACK packet, checksum2 error, servo = " << std::hex << recv_pkt.servo_id << " cmd = " << recv_pkt.command << std::dec << endlog();
+						}
 						recv_state = HEADER1;
 						break;
 					}
@@ -208,7 +239,7 @@ void HerkulexDriver::updateHook()
 
 				case DATA:
 					{
-						ssize_t bytes_to_read = recv_pkt_size - HEADER_SIZE - recv_pkt.data.size();
+						ssize_t bytes_to_read = recv_pkt_size - HerkulexPacket::HEADER_SIZE - recv_pkt.data.size();
 						bytes_to_read = std::min(bytes_to_read, buffer_size - buffer_index);
 
 						recv_pkt.data.insert(recv_pkt.data.end(), buffer + buffer_index, buffer + buffer_index + bytes_to_read);
@@ -216,7 +247,7 @@ void HerkulexDriver::updateHook()
 						buffer_index += bytes_to_read - 1;
 					}
 					// check if full packet is receved
-					if (recv_pkt.data.size() == recv_pkt_size - HEADER_SIZE) {
+					if (recv_pkt.data.size() == recv_pkt_size - HerkulexPacket::HEADER_SIZE) {
 						// checksum check
 						unsigned char checksum = recv_pkt_size ^ recv_pkt.servo_id ^ recv_pkt.command;
 						for(int i = 0; i < recv_pkt.data.size(); i++) checksum ^= recv_pkt.data[i];
@@ -224,15 +255,14 @@ void HerkulexDriver::updateHook()
 
 						if (checksum == recv_pkt_checksum1) {
 							// send packet
-							log(RealTime) << "ACK packet is successfully received: servo = " << std::hex << recv_pkt.servo_id << " cmd = " << recv_pkt.command << std::dec << endlog();
 							if (receivePacketDL.ready()) {
-								this->receivePacketDL(recv_pkt);
+								receivePacketDL(recv_pkt);
 							}
 						}
 						else {
+							Logger::In("HerkulexDriver");
 							log(Warning) << "ACK packet checksum1 error, servo = " << std::hex << recv_pkt.servo_id << " cmd = " << recv_pkt.command << std::dec << endlog();
 						}
-
 						recv_state = HEADER1;
 					}
 					break;
@@ -243,36 +273,39 @@ void HerkulexDriver::updateHook()
 
 void HerkulexDriver::sendPacketDL(const sweetie_bot_hardware_herkulex_msgs::HerkulexPacket& pkt) 
 {
-	char buffer[BUFFER_SIZE];
-	size_t pkt_size = HEADER_SIZE + pkt.data.size();
+	char buffer[HerkulexPacket::HEADER_SIZE + HerkulexPacket::DATA_SIZE];
+	size_t pkt_size = HerkulexPacket::HEADER_SIZE + pkt.data.size();
 
 	if (!isConfigured()) return;
 
-	if (pkt_size > BUFFER_SIZE) {
+	if (pkt_size > HerkulexPacket::HEADER_SIZE + HerkulexPacket::DATA_SIZE) {
 		log(Error) << "REQ packet is too large." << endlog(); 
 		return;
 	}
 
 	// prepare send buffer
+	// header
 	buffer[0] = 0xFF;
 	buffer[1] = 0xFF;
 	buffer[2] = pkt_size;
 	buffer[3] = pkt.servo_id;
 	buffer[4] = pkt.command;
 
+	// packet data and checksum calculation
 	unsigned char xor_accum = buffer[2] ^ buffer[3] ^ buffer[4];
 	for(int i = 0; i < pkt.data.size(); i++) {
-		buffer[i + HEADER_SIZE] = pkt.data[i];
+		buffer[i + HerkulexPacket::HEADER_SIZE] = pkt.data[i];
 		xor_accum ^= pkt.data[i];
 	}
 
-	buffer[5] = xor_accum & 0xFE;
-	buffer[6] = ~buffer[5] & 0xFE;
+	buffer[5] = xor_accum & 0xFE;  // checksum1
+	buffer[6] = ~buffer[5] & 0xFE; // checksum2
 
 	size_t bytes_written = 0;
 	do {
 		ssize_t retval = TEMP_FAILURE_RETRY(write(port_fd, buffer + bytes_written, pkt_size - bytes_written));
 		if (retval == -1) {
+			Logger::In("HerkulexDriver");
 			log(Error) << "Write to serial port failed: " << strerror(errno) << endlog(); 
 			this->exception();
 			return;
@@ -281,7 +314,12 @@ void HerkulexDriver::sendPacketDL(const sweetie_bot_hardware_herkulex_msgs::Herk
 	}
 	while (bytes_written < pkt_size);
 
-	log(RealTime) << "REQ packet is successfully sended: servo = " << std::hex << pkt.servo_id << " cmd = " << pkt.command << std::dec << endlog();
+	if (log().getLogLevel() >= Logger::Debug) {
+		Logger::In("HerkulexDriver");
+		log(Debug) << "WRITE on serial port (" << pkt_size << " bytes):" << std::hex << std::setw(2) << std::setfill('0');
+		for (int i = 0; i < pkt_size; i++) log(Debug) << (unsigned int) buffer[i] << " ";
+		log(Debug) << resetfmt << endlog();
+	}
 }
 
 void HerkulexDriver::stopHook() 
