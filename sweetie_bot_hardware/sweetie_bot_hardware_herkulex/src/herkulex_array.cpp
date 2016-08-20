@@ -128,7 +128,7 @@ HerkulexArray::HerkulexArray(std::string const& name) :
 		.arg("servo", "Servo name.");
 	this->addOperation("printAllServoStatuses", &HerkulexArray::printAllServoStatuses, this, OwnThread)
 		.doc("Print statuses of all servos.");
-	this->addOperation("printErrorServoStatuses", &HerkulexArray::printAllServoStatuses, this, OwnThread)
+	this->addOperation("printErrorServoStatuses", &HerkulexArray::printErrorServoStatuses, this, OwnThread)
 		.doc("Print statuses of erroneous servos.");
 	this->addOperation("printRegisterRAM", &HerkulexArray::printRegisterRAM, this, OwnThread)
 		.doc("Print register value in human readable format.")
@@ -443,7 +443,7 @@ bool HerkulexArray::resetAllServos()
 		broadcast->reqReset(req_pkt);
 		sendPacket(req_pkt);
 
-		//TODO replce with OROCOS timer 
+		//TODO replace with OROCOS timer 
 		sleep(1);
 
 		// set ack policy NOT WORKING
@@ -464,7 +464,7 @@ bool HerkulexArray::resetAllServos()
 			//set ack policy to always reply
 			s->reqWrite_ram(req_pkt, "ack_policy", 2);
 			if (!sendRequest(req_pkt, s->ackCallbackWrite_ram(status))) {
-				log(Error) << "Write " << s->getName() << " ack_policy failed. Skip servo." << endlog();
+				log(Error) << "Write " << s->getName() << " \'ack_policy\' failed. Skipping servo." << endlog();
 				success = false;
 				continue;
 			}
@@ -731,7 +731,7 @@ bool HerkulexArray::sendRequest(const HerkulexPacket& req, HerkulexServo::AckCal
 
 				if (log().getLogLevel() >= Logger::Debug) {
 					log() << Logger::Debug << std::hex << std::setw(2) << std::setfill('0');
-					log() << "ACK packet: servo_id: " << (int) pkt_ack->servo_id << " cmd: " << (int) pkt_ack->command << " data(" << pkt_ack->data.size() << "): ";
+					log() << "ACK packet: servo_id: " << (int) pkt_ack->servo_id << " cmd: " << (int) pkt_ack->command << " data(" << std::dec << pkt_ack->data.size() << std::hex << "): ";
 					for(auto c = pkt_ack->data.begin(); c != pkt_ack->data.end(); c++) log() << (int) *c << " ";
 					log() << resetfmt << Logger::nl << "(success = " << success << ", tryout = " << tryouts_prop - tryouts << ")" << endlog();
 				}
