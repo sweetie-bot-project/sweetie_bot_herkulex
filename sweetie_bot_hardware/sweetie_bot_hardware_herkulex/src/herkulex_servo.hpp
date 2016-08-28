@@ -60,75 +60,82 @@ namespace herkulex_servo {
 			}
 	};
 
+	struct PosVel {
+		bool error;
+		double pos;
+		double vel;
+	};
+
+	//TODO decide if State msg type is necessary
+	//typedef sweetie_bot_hardware_herkulex_msgs::State;
+	struct State {
+		double pos;
+		double vel;
+		double pwm;
+		double pos_goal;
+		double pos_desired;
+		double vel_desired;
+	};
+
+	//TODO decide if Status msg type is necessary
+	//typedef sweetie_bot_hardware_herkulex_msgs::Status;
+	struct Status {
+		unsigned char error;
+		unsigned char detail;
+
+		Status() {}
+		Status(unsigned int flags) : error(flags & 0xFF), detail((flags >> 8) & 0xFF) {}
+		operator unsigned int() const { return (unsigned int) error + ((unsigned int) detail) << 8; }
+
+		enum detail_flag {
+			MOVING = 0x01,
+			INPOSITION = 0x02,
+			INVALID_PACKET_CHECKSUM = 0x04,
+			INVALID_PACKET_UNKNOWN_CMD = 0x08,
+			INVALID_PACKET_REG_RANGE = 0x10,
+			INVALID_PACKET_FRAME_ERROR = 0x20,
+			MOTOR_ON = 0x40,
+		};
+		enum error_flag {
+			ERROR_OVER_VOLTAGE = 0x01,
+			ERROR_POT_LIMIT = 0x02,
+			ERROR_TEMPERATURE = 0x04,
+			INVALID_PACKET = 0x08,
+			ERROR_OVERLOAD = 0x10,
+			ERROR_DRIVER_FAULT = 0x20,
+			ERROR_EEP_REGS = 0x40,
+			ERROR_MASK = 0x77,
+		};
+	};
+
+	struct JOGMode {
+		unsigned char flags;
+
+		JOGMode() { flags = 0; }
+		JOGMode(unsigned char _flags) : flags(_flags) {}
+		operator unsigned char() const { return flags & JOGMODE_MASK; }
+
+		enum {
+			STOP             = 0x01, // 0b00000001
+			POSITION_CONTROL = 0x00, // 0b00000000
+			SPEED_CONTROL    = 0x02, // 0b00000010
+
+			LED_OFF          = 0x00, // 0b00000000
+			LED_WHITE        = 0x1C, // 0b00011100
+			LED_RED          = 0x10, // 0b00010000
+			LED_GREEN        = 0x04, // 0b00000100
+			LED_BLUE         = 0x08, // 0b00001000
+			LED_YELLOW       = 0x14, // 0b00010100
+			LED_CYAN         = 0x0C, // 0b00001100
+			LED_MAGNETA      = 0x18, // 0b00011000
+
+			JOGMODE_MASK	 = 0x1F,
+		};
+	};
+
 	class HerkulexServo
 	{
 		public: 
-			struct PosVel {
-				bool error;
-				double pos;
-				double vel;
-			};
-
-			struct State {
-				bool error;
-				double pos;
-				double vel;
-				double pwm;
-				double pos_goal;
-				double pos_desired;
-				double vel_desired;
-			};
-
-			struct Status {
-				unsigned char error;
-				unsigned char detail;
-
-				enum detail_flag {
-					MOVING = 0x01,
-					INPOSITION = 0x02,
-					INVALID_PACKET_CHECKSUM = 0x04,
-					INVALID_PACKET_UNKNOWN_CMD = 0x08,
-					INVALID_PACKET_REG_RANGE = 0x10,
-					INVALID_PACKET_FRAME_ERROR = 0x20,
-					MOTOR_ON = 0x40,
-				};
-				enum error_flag {
-					ERROR_OVER_VOLTAGE = 0x01,
-					ERROR_POT_LIMIT = 0x02,
-					ERROR_TEMPERATURE = 0x04,
-					INVALID_PACKET = 0x08,
-					ERROR_OVERLOAD = 0x10,
-					ERROR_DRIVER_FAULT = 0x20,
-					ERROR_EEP_REGS = 0x40,
-					ERROR_MASK = 0x77,
-				};
-			};
-
-			struct JOGMode {
-				unsigned char flags;
-
-				JOGMode() { flags = 0; }
-				JOGMode(unsigned char _flags) : flags(_flags) {}
-				operator unsigned char() const { return flags & JOGMODE_MASK; }
-
-				enum {
-					STOP             = 0x01, // 0b00000001
-					POSITION_CONTROL = 0x00, // 0b00000000
-					SPEED_CONTROL    = 0x02, // 0b00000010
-
-					LED_OFF          = 0x00, // 0b00000000
-					LED_WHITE        = 0x1C, // 0b00011100
-					LED_RED          = 0x10, // 0b00010000
-					LED_GREEN        = 0x04, // 0b00000100
-					LED_BLUE         = 0x08, // 0b00001000
-					LED_YELLOW       = 0x14, // 0b00010100
-					LED_CYAN         = 0x0C, // 0b00001100
-					LED_MAGNETA      = 0x18, // 0b00011000
-
-					JOGMODE_MASK	 = 0x1F,
-				};
-			};
-
 			typedef  boost::function<bool(const sweetie_bot_hardware_herkulex_msgs::HerkulexPacket&)> AckCallback;
 
 		protected:

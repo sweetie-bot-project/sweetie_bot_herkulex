@@ -11,6 +11,8 @@
 
 #include <orocos/sensor_msgs/typekit/JointState.h>
 #include <orocos/sweetie_bot_hardware_herkulex_msgs/typekit/HerkulexPacket.h>
+#include <orocos/sweetie_bot_hardware_herkulex_msgs/typekit/HerkulexServoState.h>
+#include <orocos/sweetie_bot_hardware_herkulex_msgs/typekit/ServoGoal.h>
 //#include <orocos/sweetie_bot_core_msgs/typekit/ServoGoal.h>
 
 #include "herkulex_servo.hpp"
@@ -96,9 +98,11 @@ class HerkulexArray : public RTT::TaskContext
 		void printAllRegistersRAM(const std::string& servo);
 
 		// OPERATIONS: PROVIDED (protocol interface)
-		//bool reqIJOG(HerkulexPacket& req, const sweetie_bot_core_msgs::ServoGoal& goal);
-		bool reqPosVel(herkulex_servo::HerkulexPacket& req, const std::string servo);
-		bool ackPosVel(herkulex_servo::HerkulexPacket& ack, const std::string servo, double& pos, double& vel);
+		bool reqIJOG(herkulex_servo::HerkulexPacket& req, const sweetie_bot_hardware_herkulex_msgs::ServoGoal& goal);
+		bool reqPosVel(herkulex_servo::HerkulexPacket& req, const std::string& servo);
+		bool ackPosVel(const herkulex_servo::HerkulexPacket& ack, const std::string& servo, double& pos, double& vel, unsigned int& status);
+		bool reqState(herkulex_servo::HerkulexPacket& req, const std::string& servo);
+		bool ackState(const herkulex_servo::HerkulexPacket& ack, const std::string& servo, sweetie_bot_hardware_herkulex_msgs::HerkulexServoState& state, unsigned int& status);
 
 	protected:
 		// interrupt waiting
@@ -107,13 +111,11 @@ class HerkulexArray : public RTT::TaskContext
 		void sendPacket(const herkulex_servo::HerkulexPacket& req);
 		bool sendRequest(const herkulex_servo::HerkulexPacket&, herkulex_servo::HerkulexServo::AckCallback);
 		// Helper fuctions
-		std::string statusToString(herkulex_servo::HerkulexServo::Status status) ;
+		std::string statusToString(herkulex_servo::Status status) ;
 		bool setServoRegisters(const herkulex_servo::HerkulexServo * s, const herkulex_servo::RegisterValues * reg_init);
 		// servos access
 		const herkulex_servo::HerkulexServo& getServo(const string& name); 
 		bool addServo(std::shared_ptr<herkulex_servo::HerkulexServo> servo);
-		/*bool checkServo(const string& name); 
-		bool checkServoReg(const herkulex_servo::HerkulexServo& s, const string& reg);*/
 
 	public:
 		HerkulexArray(std::string const& name);

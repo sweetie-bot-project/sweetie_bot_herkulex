@@ -1,4 +1,5 @@
 #include <iostream>
+#include <stdexcept>
 
 extern "C" {
 #include <unistd.h>
@@ -22,9 +23,9 @@ std::ostream& resetfmt(std::ostream& s) {
 }
 
 const unsigned long HerkulexArray::READ_ERROR = 0x10000;
-const unsigned int HerkulexArray::JOG_STOP = HerkulexServo::JOGMode::STOP;
-const unsigned int HerkulexArray::JOG_POSITION = HerkulexServo::JOGMode::POSITION_CONTROL;
-const unsigned int HerkulexArray::JOG_SPEED = HerkulexServo::JOGMode::SPEED_CONTROL;
+const unsigned int HerkulexArray::JOG_STOP = herkulex_servo::JOGMode::STOP;
+const unsigned int HerkulexArray::JOG_POSITION = herkulex_servo::JOGMode::POSITION_CONTROL;
+const unsigned int HerkulexArray::JOG_SPEED = herkulex_servo::JOGMode::SPEED_CONTROL;
 
 HerkulexArray::HerkulexArray(std::string const& name) : 
 	TaskContext(name, PreOperational),
@@ -139,21 +140,32 @@ HerkulexArray::HerkulexArray(std::string const& name) :
 		.arg("servo", "Servo name.");
 
 	// Prorocol access
-	/*this->provides("protocol")->addOperation("reqIJOG", &HerkulexArray::reqIJOG, this, ClientThread)
-		.doc("Generate IJOG packet, cause exeception on failure.")
-		.arg("req", "Reference to generated packet (HerkulexPacket).");
-		.arg("goal", "Position controlled servo new goal position (ServoGoal).");*/
 	this->provides("protocol")->doc("Generation and parsing of HerkulexPackets");
+	this->provides("protocol")->addOperation("reqIJOG", &HerkulexArray::reqIJOG, this, ClientThread)
+		.doc("Generate IJOG packet, cause exeception on failure.")
+		.arg("req", "Reference to generated packet (HerkulexPacket).")
+		.arg("goal", "Position controlled servo new goal position (ServoGoal).");
 	this->provides("protocol")->addOperation("reqPosVel", &HerkulexArray::reqPosVel, this, ClientThread)
 		.doc("Generate READ packet for position and velocity query? cause exeception on failure.")
 		.arg("req", "Reference to generated packet (HerkulexPacket).")
 		.arg("servo", "Servo name.");
-	this->provides("protocol")->addOperation("acqPosVel", &HerkulexArray::ackPosVel, this, ClientThread)
+	this->provides("protocol")->addOperation("ackPosVel", &HerkulexArray::ackPosVel, this, ClientThread)
 		.doc("Generate READ packet for position and velocity query, cause exeception on failure, return false on invalid packet.")
 		.arg("ack", "Reference to received packet (HerkulexPacket).")
 		.arg("servo", "Servo name.")
 		.arg("pos", "Reference to position.")
-		.arg("vel", "Reference to velocity.");
+		.arg("vel", "Reference to velocity.")
+		.arg("status", "Servo status (byte0=status_error, byte1=status_detail).");
+	this->provides("protocol")->addOperation("reqState", &HerkulexArray::reqState, this, ClientThread)
+		.doc("Generate READ packet for extended state query (position, velocite, pwm, target, desired position and speed), cause exeception on failure.")
+		.arg("req", "Reference to generated packet (HerkulexPacket).")
+		.arg("servo", "Servo name.");
+	this->provides("protocol")->addOperation("ackState", &HerkulexArray::ackState, this, ClientThread)
+		.doc("Decode extended state query (position, velocite, pwm, target, desired position and speed), cause exeception on failure, return false on invalid packet.")
+		.arg("ack", "Reference to received packet (HerkulexPacket).")
+		.arg("servo", "Servo name.")
+		.arg("state", "Reference to HerkulexServoState msg, if query has succed extended servo state will be pushed back.")
+		.arg("status", "Servo status (byte0=status_error, byte1=status_detail).");
 }
 
 bool HerkulexArray::configureHook()
@@ -307,7 +319,7 @@ unsigned long HerkulexArray::getRegisterRAM(const std::string& servo, const std:
 	try {
 		const HerkulexServo& s = getServo(servo);
 		unsigned int val;
-		HerkulexServo::Status status;
+		herkulex_servo::Status status;
 		s.reqRead_ram(req_pkt, reg);
 		bool success = sendRequest(req_pkt, s.ackCallbackRead_ram(reg, val, status));
 		if (success) return val;
@@ -325,7 +337,7 @@ bool HerkulexArray::setRegisterRAM(const std::string& servo, const std::string& 
 	Logger::In("HerkulexArray");
 	try {
 		const HerkulexServo& s = getServo(servo);
-		HerkulexServo::Status status;
+		herkulex_servo::Status status;
 		s.reqWrite_ram(req_pkt, reg, val);
 		return sendRequest(req_pkt, s.ackCallbackWrite_ram(status));
 	} 
@@ -340,7 +352,7 @@ bool HerkulexArray::setGoalRaw(const std::string& servo, unsigned int mode, unsi
 	Logger::In("HerkulexArray");
 	try {
 		const HerkulexServo& s = getServo(servo);
-		HerkulexServo::Status status;
+		herkulex_servo::Status status;
 		s.reqIJOGheader(req_pkt);
 		s.insertIJOGdata(req_pkt, mode, goal, playtime);
 		return sendRequest(req_pkt, s.ackCallbackIJOG(status));
@@ -356,7 +368,7 @@ bool HerkulexArray::setGoal(const std::string& servo, unsigned int mode, double 
 	try {
 		const HerkulexServo& s = getServo(servo);
 		unsigned int goal_raw;
-		if (mode & HerkulexServo::JOGMode::SPEED_CONTROL) goal_raw = s.convertVelRadToRaw(goal);
+		if (mode & herkulex_servo::JOGMode::SPEED_CONTROL) goal_raw = s.convertVelRadToRaw(goal);
 		else goal_raw = s.convertPosRadToRaw(goal);
 		return setGoalRaw(servo, mode, goal_raw, s.convertTimeSecToRaw(playtime));
 	} 
@@ -371,7 +383,7 @@ unsigned long HerkulexArray::getStatus(const std::string& servo)
 	Logger::In("HerkulexArray");
 	try {
 		const HerkulexServo& s = getServo(servo);
-		HerkulexServo::Status status;
+		herkulex_servo::Status status;
 		s.reqStat(req_pkt);
 		bool success =  sendRequest(req_pkt, s.ackCallbackStat(status));
 		if (success) return status.error + (static_cast<unsigned long>(status.detail) << 8);
@@ -388,7 +400,7 @@ bool HerkulexArray::clearStatus(const std::string& servo)
 	Logger::In("HerkulexArray");
 	try {
 		const HerkulexServo& s = getServo(servo);
-		HerkulexServo::Status status;
+		herkulex_servo::Status status;
 		s.reqWriteClearStatus(req_pkt);
 		return sendRequest(req_pkt, s.ackCallbackWriteClearStatus(status));
 	} 
@@ -400,7 +412,7 @@ bool HerkulexArray::clearStatus(const std::string& servo)
 
 bool HerkulexArray::setServoRegisters(const HerkulexServo * s, const RegisterValues * reg_init) 
 {
-	HerkulexServo::Status status;
+	herkulex_servo::Status status;
 	bool success = true;
 	for(RegisterValues::const_iterator r = reg_init->begin(); r != reg_init->end(); r++) {
 		s->reqWrite_ram(req_pkt, r->first, r->second);
@@ -416,7 +428,7 @@ bool HerkulexArray::resetServo(const std::string& servo)
 	Logger::In("HerkulexArray");
 	try {
 		const HerkulexServo& s = getServo(servo);
-		HerkulexServo::Status status;
+		herkulex_servo::Status status;
 		// RESET
 		s.reqReset(req_pkt);
 		bool success =  sendRequest(req_pkt, s.ackCallbackReset(status));
@@ -456,7 +468,7 @@ bool HerkulexArray::resetAllServos()
 			sendPacketCM(req_pkt);
 		}*/
 		// init servo individually and check status
-		HerkulexServo::Status status;
+		herkulex_servo::Status status;
 		bool success = true;
 		for(HerkulexServoArray::const_iterator iter = servos.begin(); iter != servos.end(); iter++) {
 			const HerkulexServo * s = iter->second.get();
@@ -477,7 +489,7 @@ bool HerkulexArray::resetAllServos()
 			}
 			s->reqStat(req_pkt);
 			if (sendRequest(req_pkt, s->ackCallbackStat(status))) {
-				if (status.error & HerkulexServo::Status::ERROR_MASK) {
+				if (status.error & herkulex_servo::Status::ERROR_MASK) {
 					std::cout << s->getName() << " ID = " << std::hex << s->getID() << std::dec << statusToString(status) << std::endl;
 					success = false;
 				}
@@ -505,7 +517,7 @@ bool HerkulexArray::publishJointStates()
 	bool success = true;
 	unsigned int i = 0;
 	double pos, vel;
-	HerkulexServo::Status status;
+	herkulex_servo::Status status;
 	for(HerkulexServoArray::const_iterator iter = servos.begin(); iter != servos.end(); iter++) {
 		const HerkulexServo& s = *(iter->second);
 		s.reqPosVel(req_pkt);
@@ -524,33 +536,33 @@ bool HerkulexArray::publishJointStates()
 	return success;
 }
 
-std::string HerkulexArray::statusToString(HerkulexServo::Status status) 
+std::string HerkulexArray::statusToString(herkulex_servo::Status status) 
 {
 	std::stringstream status_str;
 
-	if (status.detail & HerkulexServo::Status::MOTOR_ON) status_str << "ON ";
+	if (status.detail & herkulex_servo::Status::MOTOR_ON) status_str << "ON ";
 	else status_str << "OFF ";
-	if (status.detail & HerkulexServo::Status::MOVING) status_str << "moving ";
-	if (status.detail & HerkulexServo::Status::INPOSITION) status_str << "inpos ";
-	if (status.error & HerkulexServo::Status::ERROR_MASK) {
+	if (status.detail & herkulex_servo::Status::MOVING) status_str << "moving ";
+	if (status.detail & herkulex_servo::Status::INPOSITION) status_str << "inpos ";
+	if (status.error & herkulex_servo::Status::ERROR_MASK) {
 		status_str << "ERR ( ";
-		if (status.error & HerkulexServo::Status::ERROR_OVER_VOLTAGE) status_str << "voltage ";
-		if (status.error & HerkulexServo::Status::ERROR_POT_LIMIT) status_str << "pot_limit ";
-		if (status.error & HerkulexServo::Status::ERROR_TEMPERATURE) status_str << "temperature ";
-		if (status.error & HerkulexServo::Status::ERROR_OVERLOAD) status_str << "overload ";
-		if (status.error & HerkulexServo::Status::ERROR_DRIVER_FAULT) status_str << "driver_fault ";
-		if (status.error & HerkulexServo::Status::ERROR_EEP_REGS) status_str << "eep_regs ";
+		if (status.error & herkulex_servo::Status::ERROR_OVER_VOLTAGE) status_str << "voltage ";
+		if (status.error & herkulex_servo::Status::ERROR_POT_LIMIT) status_str << "pot_limit ";
+		if (status.error & herkulex_servo::Status::ERROR_TEMPERATURE) status_str << "temperature ";
+		if (status.error & herkulex_servo::Status::ERROR_OVERLOAD) status_str << "overload ";
+		if (status.error & herkulex_servo::Status::ERROR_DRIVER_FAULT) status_str << "driver_fault ";
+		if (status.error & herkulex_servo::Status::ERROR_EEP_REGS) status_str << "eep_regs ";
 		status_str << ") ";
 	}
 	else {
 		status_str << "OK ";
 	}
-	if (status.error & HerkulexServo::Status::INVALID_PACKET) {
+	if (status.error & herkulex_servo::Status::INVALID_PACKET) {
 		status_str << "INVALID_PACKET ( ";
-		if (status.detail & HerkulexServo::Status::INVALID_PACKET_CHECKSUM) status_str << "checksum ";
-		if (status.detail & HerkulexServo::Status::INVALID_PACKET_UNKNOWN_CMD) status_str << "cmd ";
-		if (status.detail & HerkulexServo::Status::INVALID_PACKET_REG_RANGE) status_str << "reg_range ";
-		if (status.detail & HerkulexServo::Status::INVALID_PACKET_FRAME_ERROR) status_str << "frame_err ";
+		if (status.detail & herkulex_servo::Status::INVALID_PACKET_CHECKSUM) status_str << "checksum ";
+		if (status.detail & herkulex_servo::Status::INVALID_PACKET_UNKNOWN_CMD) status_str << "cmd ";
+		if (status.detail & herkulex_servo::Status::INVALID_PACKET_REG_RANGE) status_str << "reg_range ";
+		if (status.detail & herkulex_servo::Status::INVALID_PACKET_FRAME_ERROR) status_str << "frame_err ";
 		status_str << ") ";
 	};
 	return status_str.str();
@@ -561,7 +573,7 @@ void HerkulexArray::printServoStatus(const std::string& servo)
 	Logger::In("HerkulexArray");
 	try {
 		const HerkulexServo& s = getServo(servo);
-		HerkulexServo::Status status;
+		herkulex_servo::Status status;
 		s.reqStat(req_pkt);
 		bool success = sendRequest(req_pkt, s.ackCallbackStat(status));
 		if (success) {
@@ -587,14 +599,14 @@ void HerkulexArray::printAllServoStatuses()
 void HerkulexArray::printErrorServoStatuses() 
 {
 	Logger::In("HerkulexArray");
-	HerkulexServo::Status status;
+	herkulex_servo::Status status;
 	bool success;
 	for(HerkulexServoArray::const_iterator iter = servos.begin(); iter != servos.end(); iter++) {
 		const HerkulexServo& s = *(iter->second);
 		s.reqStat(req_pkt);
 		bool success = sendRequest(req_pkt, s.ackCallbackStat(status));
 		if (success) {
-			if (status.error & HerkulexServo::Status::ERROR_MASK) {
+			if (status.error & herkulex_servo::Status::ERROR_MASK) {
 				std::cout << s.getName() << " ID = " << std::hex << s.getID() << std::dec << statusToString(status) << std::endl;
 			}
 		}
@@ -631,7 +643,7 @@ void HerkulexArray::printAllRegistersRAM(const std::string& servo)
 	try {
 		const HerkulexServo& s = getServo(servo);
 		unsigned int val;
-		HerkulexServo::Status status;
+		herkulex_servo::Status status;
 
 		std::cout << s.getName() << " ID = " << std::hex << s.getID() << std::endl;
 		for(auto r = s.register_mapper.registers.begin(); r != s.register_mapper.registers.end(); r++) {
@@ -653,33 +665,60 @@ void HerkulexArray::printAllRegistersRAM(const std::string& servo)
 	}
 }
 
-/*
-bool HerkulexArray::reqIJOG(HerkulexPacket& req, const sweetie_bot_core_msgs::ServoGoal& goal)
+bool HerkulexArray::reqIJOG(HerkulexPacket& req, const sweetie_bot_hardware_herkulex_msgs::ServoGoal& goal)
 {
 	if (!this->isConfigured()) return false;
-	if (goal.name.size() != goal.target_position) throw std::bad_arg("HerkulexArray::reqIJOG: ServoGoal message has incorrect structure.");
-	broadcast.reqIJOGheader(req);
+	if (goal.name.size() != goal.target_pos.size() && goal.name.size() != goal.playtime.size()) throw std::invalid_argument("HerkulexArray::reqIJOG: ServoGoal message has incorrect structure.");
+	broadcast->reqIJOGheader(req);
 	for(int i = 0; i < goal.name.size(); i++) {
-		const HerkulexServo * s = servo.findByName(goal.name[i]);
-		if (s != nullptr) {
-			s->insertSJOGdata(req, HerkulexServo::JOGMode::POSITION_CONTROL, s->convertPosRadToRaw(goal.target_position[i]));
+		HerkulexServoArray::const_iterator s = servos.find(goal.name[i]);
+		if (s != servos.end()) {
+			s->second->insertIJOGdata(req, herkulex_servo::JOGMode::POSITION_CONTROL, s->second->convertPosRadToRaw(goal.target_pos[i]), s->second->convertTimeSecToRaw(goal.playtime[i]));
 		}
 	}
 }
-*/
 
-bool HerkulexArray::reqPosVel(HerkulexPacket& req, const std::string servo)
+bool HerkulexArray::reqPosVel(HerkulexPacket& req, const std::string& servo)
 {
 	if (!this->isConfigured()) return false;
 	getServo(servo).reqPosVel(req);
 	return true;
 }
 
-bool HerkulexArray::ackPosVel(HerkulexPacket& ack, const std::string servo, double& pos, double& vel) 
+bool HerkulexArray::ackPosVel(const HerkulexPacket& ack, const std::string& servo, double& pos, double& vel, unsigned int& _status) 
 {
 	if (!this->isConfigured()) return false;
-	HerkulexServo::Status status;
-	return getServo(servo).ackPosVel(ack, pos, vel, status);
+	herkulex_servo::Status status;
+	bool success = getServo(servo).ackPosVel(ack, pos, vel, status);
+	_status = status;
+	return success;
+}
+
+bool HerkulexArray::reqState(HerkulexPacket& req, const std::string& servo)
+{
+	if (!this->isConfigured()) return false;
+	getServo(servo).reqState(req);
+	return true;
+}
+
+bool HerkulexArray::ackState(const HerkulexPacket& ack, const std::string& servo, sweetie_bot_hardware_herkulex_msgs::HerkulexServoState& state_array, unsigned int& _status) 
+{
+	if (!this->isConfigured()) return false;
+	herkulex_servo::Status status;
+	herkulex_servo::State state;
+	bool success = getServo(servo).ackState(ack, state, status);
+	_status = status;
+	if (success) {
+		state_array.name.push_back(servo);
+		state_array.pos.push_back(state.pos);
+		state_array.vel.push_back(state.vel);
+		state_array.pwm.push_back(state.pwm);
+		state_array.pos_goal.push_back(state.pos_goal);
+		state_array.pos_desired.push_back(state.pos_desired);
+		state_array.vel_desired.push_back(state.vel_desired);
+		state_array.status.push_back(_status);
+	}
+	return success;
 }
 
 void HerkulexArray::receivePacketCM(const HerkulexPacket& pkt) 
