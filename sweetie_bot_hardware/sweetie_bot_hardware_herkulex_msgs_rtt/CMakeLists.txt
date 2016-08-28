@@ -9,5 +9,4 @@ ros_generate_rtt_service_proxies(sweetie_bot_hardware_herkulex_msgs_rtt)
 orocos_generate_package(
   DEPENDS sweetie_bot_hardware_herkulex_msgs
   DEPENDS_TARGETS rtt_roscomm  rtt_std_msgs
-
 )
