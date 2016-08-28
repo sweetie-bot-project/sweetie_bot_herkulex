@@ -47,6 +47,11 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
   FILES
   HerkulexPacket.msg
+  HerkulexPacket.msg
+  HerkulexServoState.msg
+  HerkulexStatistics.msg
+  ServoGoal.msg
+  Status.msg
 )
 
 ## Generate services in the 'srv' folder

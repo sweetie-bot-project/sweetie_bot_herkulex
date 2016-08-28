@@ -1,3 +1,9 @@
+# Herkulex servo control protocol packet. Message incapsulates proper outgoing (to servo) or incoming (from servo) packet. 
+#
+#  * servo_id --- servo hardware ID.
+#  * command --- protocol command (see Herkulex Servo manual) or error code.
+#  * data --- packet optional data without checksum.
+#
 uint8 servo_id
 uint8 command
 uint8[] data
@@ -22,7 +28,7 @@ uint8 ACK_ROLLBACK=72
 uint8 ACK_REBOOT=73
 uint8 ERR_TIMEOUT=129
 uint8 ERR_CHECKSUM=130
-# size constants
+# max size constants
 uint8 DATA_SIZE=213
 uint8 HEADER_SIZE=7
 
