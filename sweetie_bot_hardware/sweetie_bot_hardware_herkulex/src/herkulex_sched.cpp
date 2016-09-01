@@ -22,8 +22,16 @@ HerkulexSched::HerkulexSched(std::string const& name) :
 	ackState("ackState"),
 	cm_req_buffer(10, HerkulexPacket(), true),
 	ack_buffer(10, HerkulexPacket(), true),
-	timer(*this)
+	timer(this)
 {
+	// INITIALIZATION
+	// Check timer thread.
+	if (!timer.getActivity() || !timer.getActivity()->thread()) {
+		log(Error) << "Unable to start timer thread.";
+		this->fatal();
+		return;
+	}
+
 	// Ports
 	this->addEventPort("sync", sync_port)
 		.doc("Timer syncronization event. This event indicates start of real time exchange round.");
@@ -61,7 +69,7 @@ HerkulexSched::HerkulexSched(std::string const& name) :
 	this->requires()->addOperationCaller(sendPacketDL);
 
 	// OPERATIONS: CONFIGURATION AND MONITORING INTERFACE
-	this->addOperation("sendPacketCM", &HerkulexSched::receivePacketDL, this, ClientThread) 
+	this->addOperation("sendPacketCM", &HerkulexSched::sendPacketCM, this, ClientThread) 
 		.doc("Forward packet to data link interface during configuration and monitoring round.") 
 		.arg("pkt", "HerkulexPacket to send.");
 	this->requires()->addOperationCaller(receivePacketCM);
@@ -93,20 +101,20 @@ bool HerkulexSched::configureHook()
 	cm_req_buffer.data_sample(req_pkt);
 
 	// reserve port buffers
-	joints.name.reserve(poll_list.size());
-	joints.position.reserve(poll_list.size());
-	joints.velocity.reserve(poll_list.size());
+	joints.name.resize(poll_list.size());
+	joints.position.resize(poll_list.size());
+	joints.velocity.resize(poll_list.size());
 
-	states.name.reserve(poll_list.size());
-	states.pos.reserve(poll_list.size());
-	states.vel.reserve(poll_list.size());
-	states.status.reserve(poll_list.size());
+	states.name.resize(poll_list.size());
+	states.pos.resize(poll_list.size());
+	states.vel.resize(poll_list.size());
+	states.status.resize(poll_list.size());
 
 	if (detailed_state) {
-		states.pwm.reserve(poll_list.size());
-		states.pos_goal.reserve(poll_list.size());
-		states.pos_desired.reserve(poll_list.size());
-		states.vel_desired.reserve(poll_list.size());
+		states.pwm.resize(poll_list.size());
+		states.pos_goal.resize(poll_list.size());
+		states.pos_desired.resize(poll_list.size());
+		states.vel_desired.resize(poll_list.size());
 	}
 
 	// set data samples
@@ -155,13 +163,19 @@ bool HerkulexSched::startHook()
 	// get input port sample
 	goals_port.getDataSample(goals);
 
-	return true;
+	// start timer
+	return timer.getActivity()->thread()->start();
 }
 
 void HerkulexSched::updateHook()
 {
 	bool success;
 	SchedTimer::TimerId timer_id;
+
+	if (log().getLogLevel() >= Logger::Debug) {
+		Logger::In("HerkulexSched");
+		log(Debug) << "updateHook: sched_state = " << sched_state << " timeout_timer = " << timer.timeRemaining(REQUEST_TIMEOUT_TIMER) << " round_timer = " << timer.timeRemaining(ROUND_TIMER) << endlog();
+	}
 	
 	switch (sched_state) {
 		case SEND_JOG:
@@ -193,7 +207,7 @@ void HerkulexSched::updateHook()
 				// reset servo poll variables
 				poll_list_index = 0;
 				clearPortBuffers();
-				this->getActivity()->trigger();
+				this->trigger();
 			}
 			break;
 
@@ -207,6 +221,7 @@ void HerkulexSched::updateHook()
 				timer.killTimer(ROUND_TIMER);
 
 				joints_port.write(joints);
+				states_port.write(states);
 #ifdef SCHED_STATISTICS
 				statistics_port.write(statistics);
 #endif /* SCHED_STATISTICS */
@@ -218,7 +233,7 @@ void HerkulexSched::updateHook()
 					Logger::In("HerkulexSched");
 					log(Debug) << "Start CM round." << endlog();
 				}
-				this->getActivity()->trigger();
+				this->trigger();
 				break;
 			}
 			// form request to servo
@@ -231,7 +246,7 @@ void HerkulexSched::updateHook()
 			if (!success) {
 				// skip servo
 				poll_list_index++;
-				this->getActivity()->trigger();
+				this->trigger();
 				break;
 			}
 			
@@ -258,7 +273,7 @@ void HerkulexSched::updateHook()
 					Logger::In("HerkulexSched");
 					log(Debug) << "ACK timeout" << endlog();
 				}
-				this->getActivity()->trigger();
+				this->trigger();
 				break;
 			}
 
@@ -279,7 +294,7 @@ void HerkulexSched::updateHook()
 					log() << Logger::Debug << std::hex << std::setw(2) << std::setfill('0');
 					log() << "ACK packet: servo_id: " << (int) ack_pkt->servo_id << " cmd: " << (int) ack_pkt->command << " data(" << ack_pkt->data.size() << "): ";
 					for(auto c = ack_pkt->data.begin(); c != ack_pkt->data.end(); c++) log() << (int) *c << " ";
-					log() << resetfmt << endlog();
+					log() << resetfmt << Logger::nl << "pos = " << pos << " vel = " << vel << endlog();
 				}
 				ack_buffer.Release(ack_pkt);
 
@@ -301,7 +316,7 @@ void HerkulexSched::updateHook()
 					timer.killTimer(REQUEST_TIMEOUT_TIMER);
 					poll_list_index++;
 					sched_state = SEND_READ_REQ;
-					this->getActivity()->trigger();
+					this->trigger();
 					break;
 				}
 #ifdef SCHED_STATISTICS
@@ -328,7 +343,7 @@ void HerkulexSched::updateHook()
 
 			// send and receive packets completely asyncronically
 			while (!ack_buffer.empty()) {
-				HerkulexPacket * cm_ack_pkt = cm_req_buffer.PopWithoutRelease();
+				HerkulexPacket * cm_ack_pkt = ack_buffer.PopWithoutRelease();
 				if (receivePacketCM.ready()) {
 					receivePacketCM(*cm_ack_pkt);
 				}
@@ -338,7 +353,7 @@ void HerkulexSched::updateHook()
 				HerkulexPacket * cm_req_pkt = cm_req_buffer.PopWithoutRelease();
 				sendPacketDL(*cm_req_pkt);
 				cm_req_buffer.Release(cm_req_pkt);
-				if (!cm_req_buffer.empty()) this->getActivity()->trigger();
+				if (!cm_req_buffer.empty()) this->trigger();
 			}
 			break;
 
@@ -351,11 +366,12 @@ void HerkulexSched::receivePacketDL(const sweetie_bot_hardware_herkulex_msgs::He
 	if (this->isRunning()) {
 		// buffer message to updateHook processing
 		ack_buffer.Push(pkt);
-		this->getActivity()->trigger();
+		this->trigger();
 	}
 	else {
 		// forward message to CM subsystem
 		if (receivePacketCM.ready()) {
+			log(Debug) << "Forward packet to CM subsytem." << endlog();
 			receivePacketCM(pkt);
 		}
 	}
@@ -366,11 +382,13 @@ void HerkulexSched::sendPacketCM(const sweetie_bot_hardware_herkulex_msgs::Herku
 	if (this->isRunning()) {
 		// buffer message to updateHook processing
 		cm_req_buffer.Push(pkt);
-		this->getActivity()->trigger();
+		this->trigger();
 	}
 	else {
 		// forward message to data link layer
 		if (sendPacketDL.ready()) { 
+			Logger::In("HerkulexSched");
+			log(Debug) << "Forward packet to DL layer" << endlog();
 			sendPacketDL(pkt);
 		}
 		else {

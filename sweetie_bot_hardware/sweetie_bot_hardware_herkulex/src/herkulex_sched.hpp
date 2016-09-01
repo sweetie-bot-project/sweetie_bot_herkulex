@@ -12,6 +12,8 @@
 #include "orocos/sweetie_bot_hardware_herkulex_msgs/typekit/HerkulexStatistics.h"
 #include "orocos/sweetie_bot_hardware_herkulex_msgs/typekit/ServoGoal.h"
 
+#define SCHED_STATISTICS
+
 class HerkulexSched : public RTT::TaskContext
 {
 
@@ -26,11 +28,11 @@ class HerkulexSched : public RTT::TaskContext
 		typedef sweetie_bot_hardware_herkulex_msgs::ServoGoal ServoGoal;
 
 		class SchedTimer : public RTT::os::Timer {
-				HerkulexSched& owner;
+				HerkulexSched * owner;
 			public:
-				SchedTimer(HerkulexSched& _owner) : Timer(2, ORO_SCHED_RT, RTT::os::HighestPriority), owner(_owner) {}
-				void timeout(RTT::os::Timer::TimerId id) {
-					owner.getActivity()->trigger();
+				SchedTimer(HerkulexSched * _owner) : Timer(2, ORO_SCHED_RT, RTT::os::HighestPriority), owner(_owner) {}
+				void timeout(TimerId id) {
+					owner->trigger();
 				}
 		};
 		enum SchedTimers {
