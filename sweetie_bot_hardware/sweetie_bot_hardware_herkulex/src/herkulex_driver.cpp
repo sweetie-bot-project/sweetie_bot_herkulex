@@ -15,6 +15,7 @@ extern "C" {
 #include <rtt/Component.hpp>
 #include <rtt/extras/FileDescriptorActivity.hpp>
 #include <rtt/Logger.hpp>
+#include <rtt/os/TimeService.hpp>
 
 //TODO Where should be this code?
 std::ostream& resetfmt(std::ostream& s) {
@@ -36,6 +37,11 @@ HerkulexDriver::HerkulexDriver(std::string const& name) :
 	this->addOperation("sendPacket", &HerkulexDriver::sendPacketDL, this, OwnThread) 
 		.doc("Send packet to servos.") 
 		.arg("pkt", "HerkulexPacket to send.");
+
+	this->addOperation("sendPacket_wait", &HerkulexDriver::sendPacketDL_wait, this, OwnThread) 
+		.doc("Send packet to servos and wait until data is actually writen to serial port.") 
+		.arg("pkt", "HerkulexPacket to send.");
+
 	this->requires()->addOperationCaller(receivePacketDL);
 
 	this->addProperty("port_name", port_name_prop) 
@@ -219,7 +225,7 @@ void HerkulexDriver::updateHook()
 						default:
 							{
 								Logger::In("HerkulexDriver");
-								log(Warning) << "ACK packet type is unknown, servo = " << std::hex << recv_pkt.servo_id << " cmd = " << recv_pkt.command << std::dec << endlog();
+								log(Warning) << "ACK packet type is unknown, servo = " << std::hex << (unsigned int) recv_pkt.servo_id << " cmd = " << (unsigned int) recv_pkt.command << std::dec << endlog();
 							}
 							recv_state = HEADER1;
 							break;
@@ -235,7 +241,7 @@ void HerkulexDriver::updateHook()
 					if ( c != (~recv_pkt_checksum1 & 0xFE) ) {
 						{
 							Logger::In("HerkulexDriver");
-							log(Warning) << "ACK packet, checksum2 error, servo = " << std::hex << recv_pkt.servo_id << " cmd = " << recv_pkt.command << std::dec << endlog();
+							log(Warning) << "ACK packet, checksum2 error, servo = " << std::hex << (unsigned int) recv_pkt.servo_id << " cmd = " << (unsigned int) recv_pkt.command << std::dec << endlog();
 						}
 						recv_state = HEADER1;
 						break;
@@ -267,7 +273,7 @@ void HerkulexDriver::updateHook()
 						}
 						else {
 							Logger::In("HerkulexDriver");
-							log(Warning) << "ACK packet checksum1 error, servo = " << std::hex << recv_pkt.servo_id << " cmd = " << recv_pkt.command << std::dec << endlog();
+							log(Warning) << "ACK packet checksum1 error, servo = " << std::hex << (unsigned int) recv_pkt.servo_id << " cmd = " << (unsigned int) recv_pkt.command << std::dec << endlog();
 						}
 						recv_state = HEADER1;
 					}
@@ -326,6 +332,21 @@ void HerkulexDriver::sendPacketDL(const sweetie_bot_hardware_herkulex_msgs::Herk
 		for (int i = 0; i < pkt_size; i++) log(Debug) << (unsigned int) buffer[i] << " ";
 		log(Debug) << resetfmt << endlog();
 	}
+
+}
+
+void HerkulexDriver::sendPacketDL_wait(const sweetie_bot_hardware_herkulex_msgs::HerkulexPacket& pkt) 
+{
+	sendPacketDL(pkt);
+	// Wait until all data is written to port.
+	//RTT::os::TimeService::ticks tick = RTT::os::TimeService::Instance()->getTicks();
+	if (TEMP_FAILURE_RETRY(tcdrain(port_fd)) == -1) {
+		Logger::In("HerkulexDriver");
+		log(Error) << "tcdrain() failed: " << strerror(errno) << endlog(); 
+		this->exception();
+		return;
+	}
+	//std::cout << "tcdrain delay: " << RTT::os::TimeService::Instance()->secondsSince(tick) << std::endl;
 }
 
 void HerkulexDriver::stopHook() 
