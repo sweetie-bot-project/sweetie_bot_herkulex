@@ -31,6 +31,14 @@ HerkulexSched::HerkulexSched(std::string const& name) :
 		this->fatal();
 		return;
 	}
+#ifdef SCHED_STATISTICS
+	time_service = RTT::os::TimeService::Instance();
+	if (time_service == nullptr) {
+		log(Error) << "Unable to acquare TimeService.";
+		this->fatal();
+		return;
+	}
+#endif /* SCHED_STATISTICS */
 
 	// Ports
 	this->addEventPort("sync", sync_port)
@@ -47,8 +55,11 @@ HerkulexSched::HerkulexSched(std::string const& name) :
 #endif
 
 	// Properties
-	this->addProperty("period_RT", period_RT)
-		.doc("Duration of realtime exchange round. During this round the component sends set goal command and reads` states of polled servo.")
+	this->addProperty("period_RT_JOG", period_RT_JOG)
+		.doc("Duration of realtime JOG round. During this round the component sends set goal command.")
+		.set(0.01);
+	this->addProperty("period_RT_read", period_RT_read)
+		.doc("Duration of realtime exchange round. During this round the component sends queries to polled servo.")
 		.set(0.04);
 	this->addProperty("period_CM", period_CM)
 		.doc("Duration of configuration and monitoring exchange round. During this round the component forwards request from `sendPacketCM` opertion to data link layer.")
@@ -87,7 +98,7 @@ bool HerkulexSched::configureHook()
 	Logger::In("HerkulexSched");
 	// check if data link layer is ready
 	if (! sendPacketDL.ready()) {
-		log(Error) << "sendPacketDL opertion is not ready." << endlog(); 
+		log(Error) << "sendPacketDL opertions is not ready." << endlog(); 
 		return false;
 	}
 	// check if protocol service presents
@@ -143,6 +154,7 @@ void HerkulexSched::clearPortBuffers() {
 	//}
 #ifdef SCHED_STATISTICS
 	// reset statistics
+	statistics.jog_send_duration = 0;
 	statistics.avg_request_duration = 0;
 	statistics.rt_round_duration = 0;
 	statistics.n_success = 0;
@@ -181,8 +193,7 @@ void HerkulexSched::updateHook()
 		case SEND_JOG:
 			// wait sync and send JOG command
 			if (sync_port.read(timer_id) == NewData) {
-				timer.arm(ROUND_TIMER, this->period_RT);
-				
+				timer.arm(ROUND_TIMER, this->period_RT_JOG);
 				goals_port.read(goals, false);
 
 				if (goals.name.size() != goals.target_pos.size() || goals.name.size() != goals.playtime.size()) {
@@ -202,27 +213,48 @@ void HerkulexSched::updateHook()
 						log() << resetfmt << endlog();
 					}
 				}
-
-				sched_state = SEND_READ_REQ;
 				// reset servo poll variables
 				poll_list_index = 0;
 				clearPortBuffers();
-				this->trigger();
+#ifdef SCHED_STATISTICS
+				statistics.jog_send_duration = this->period_RT_JOG - timer.timeRemaining(ROUND_TIMER);
+#endif /* SCHED_STATISTICS */
+
+				sched_state = SEND_JOG_WAIT;
+				break;
+			}
+			// Forward all incoming messages to CM interface while waiting sync or before start polling.
+			while (!ack_buffer.empty()) {
+				HerkulexPacket * cm_ack_pkt = ack_buffer.PopWithoutRelease();
+				if (receivePacketCM.ready()) {
+					receivePacketCM(*cm_ack_pkt);
+				}
+				ack_buffer.Release(cm_ack_pkt);
 			}
 			break;
+
+		case SEND_JOG_WAIT:
+			// wait for round timer expires
+			if (timer.isArmed(ROUND_TIMER)) {
+				break;
+			}
+
+			sched_state = SEND_READ_REQ;
+			timer.arm(ROUND_TIMER, period_RT_read);
+#ifdef SCHED_STATISTICS
+			statistics_round_timestamp = time_service->getTicks();
+#endif /* SCHED_STATISTICS */
 
 		case SEND_READ_REQ:
 			if (poll_list_index >= poll_list.size() || !timer.isArmed(ROUND_TIMER)) {
 				// RT round is finished
-#ifdef SCHED_STATISTICS
-				statistics.rt_round_duration = period_RT - timer.timeRemaining(ROUND_TIMER);
-#endif /* SCHED_STATISTICS */
-
 				timer.killTimer(ROUND_TIMER);
 
 				joints_port.write(joints);
 				states_port.write(states);
+
 #ifdef SCHED_STATISTICS
+				statistics.rt_round_duration = time_service->secondsSince(statistics_round_timestamp);
 				statistics_port.write(statistics);
 #endif /* SCHED_STATISTICS */
 
@@ -249,7 +281,7 @@ void HerkulexSched::updateHook()
 				this->trigger();
 				break;
 			}
-			
+		
 			timer.arm(REQUEST_TIMEOUT_TIMER, this->timeout);
 			sendPacketDL(req_pkt);
 			if (log().getLogLevel() >= Logger::Debug) {
@@ -265,6 +297,7 @@ void HerkulexSched::updateHook()
 			
 		case RECEIVE_READ_ACK:
 			if (!timer.isArmed(REQUEST_TIMEOUT_TIMER)) {
+				poll_list_index++;
 				sched_state = SEND_READ_REQ;
 #ifdef SCHED_STATISTICS
 				statistics.n_errors++;

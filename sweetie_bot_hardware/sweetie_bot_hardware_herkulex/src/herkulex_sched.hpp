@@ -19,7 +19,7 @@ class HerkulexSched : public RTT::TaskContext
 
 	protected:
 		enum SchedulerState {
-			SEND_JOG, SEND_READ_REQ, RECEIVE_READ_ACK, CM_ROUND
+			SEND_JOG, SEND_JOG_WAIT, SEND_READ_REQ, RECEIVE_READ_ACK, CM_ROUND
 		};
 
 		typedef sweetie_bot_hardware_herkulex_msgs::HerkulexPacket HerkulexPacket;
@@ -55,6 +55,8 @@ class HerkulexSched : public RTT::TaskContext
 		SchedTimer timer;
 #ifdef SCHED_STATISTICS
 		HerkulexStatistics statistics;
+		const RTT::os::TimeService * time_service;
+		RTT::os::TimeService::ticks statistics_round_timestamp;
 #endif /* SCHED_STATISTICS */
 
 	    // COMPONENT INTERFACE
@@ -69,7 +71,8 @@ class HerkulexSched : public RTT::TaskContext
 #endif /* SCHED_STATISTICS */
 
 		// Properties
-		double period_RT;
+		double period_RT_JOG;
+		double period_RT_read;
 		double period_CM;
 		bool detailed_state;
 		std::vector<std::string> poll_list;
