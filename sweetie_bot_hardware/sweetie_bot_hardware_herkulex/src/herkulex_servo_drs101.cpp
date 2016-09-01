@@ -83,7 +83,7 @@ HerkulexServoDRS101::HerkulexServoDRS101(const std::string& _name, unsigned int 
 
 double HerkulexServoDRS101::convertVelRawToRad(unsigned int raw) const 
 {
-	return VEL_CONV_COEFF_RAW2RADS * raw;
+	return VEL_CONV_COEFF_RAW2RADS * (int16_t) raw;
 };
 
 unsigned int HerkulexServoDRS101::convertVelRadToRaw(double vel) const
@@ -93,7 +93,7 @@ unsigned int HerkulexServoDRS101::convertVelRadToRaw(double vel) const
 
 double HerkulexServoDRS101::convertPosRawToRad(unsigned int raw) const 
 {
-	double pos = POS_CONV_COEFF_RAW2RAD * (raw - offset);
+	double pos = POS_CONV_COEFF_RAW2RAD * ((int) raw - offset);
 	return reverse ? -pos : pos;
 };
 
@@ -118,7 +118,7 @@ void HerkulexServoDRS101::reqPosVel(HerkulexPacket& req) const
 	req.command = HerkulexPacket::REQ_RAM_READ;
 	req.servo_id = hw_id;
 	req.data.resize(2);
-	req.data[0] = 58; // RAW addr of Absolute Position
+	req.data[0] = 60; // RAW addr of Absolute Position
 	req.data[1] = 4;
 }
 
@@ -128,7 +128,7 @@ bool HerkulexServoDRS101::ackPosVel(const HerkulexPacket& ack, double& pos, doub
 	if (ack.servo_id != hw_id) return false;
 	if (ack.command != HerkulexPacket::ACK_RAM_READ) return false;
 	if (ack.data.size() != 8) return false;
-	if (ack.data[0] != 58 || ack.data[1] != 4) return false;
+	if (ack.data[0] != 60 || ack.data[1] != 4) return false;
 	unsigned int data[2];
 	if (!ackRead_impl(ack, 54, data, status)) return false;
 	pos = convertPosRawToRad(data[0]);
@@ -141,17 +141,17 @@ void HerkulexServoDRS101::reqState(HerkulexPacket& req) const
 	req.command = HerkulexPacket::REQ_RAM_READ;
 	req.servo_id = hw_id;
 	req.data.resize(2);
-	req.data[0] = 58; // RAW addr of Absolute Position
+	req.data[0] = 60; // RAW addr of Absolute Position
 	req.data[1] = 14;
 }
 
 bool HerkulexServoDRS101::ackState(const HerkulexPacket& ack, State& state, Status& status) const 
 {
-	// read 54 throw 60, at addr 58 
+	// read 54 throw 60 at addr 60
 	if (ack.servo_id != hw_id) return false;
 	if (ack.command != HerkulexPacket::ACK_RAM_READ) return false;
 	if (ack.data.size() != 18) return false;
-	if (ack.data[0] != 58 || ack.data[1] != 14) return false;
+	if (ack.data[0] != 60 || ack.data[1] != 14) return false;
 	unsigned int data[7];
 	if (!ackRead_impl(ack, 54, data, status)) return false;
 	state.pos = convertPosRawToRad(data[0]);
