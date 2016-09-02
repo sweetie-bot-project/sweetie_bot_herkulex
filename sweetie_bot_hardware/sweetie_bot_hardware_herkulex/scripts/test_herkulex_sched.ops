@@ -1,0 +1,75 @@
+# TEST HERKULEX_SCHED
+#
+# Set trajectory via CM interface?
+# store position and statistics to files:
+#
+#     state.out (herkulex srvos state)
+#     statistics.out (package statistics)
+
+import("rtt_ros");
+ros.import("rtt_rospack");
+
+var string herk_script_path = ros.find("sweetie_bot_hardware_herkulex") + "/scripts/"
+
+# LOAD HERKULEX_* SUBSYSTEM
+
+runScript(herk_script_path + "herkulex_sched_conf.ops");
+
+# SETUP HERKULEX_* REPORTING
+
+runScript(herk_script_path + "herkulex_sched_reporting.ops");
+
+# BEGIN TEST
+
+# reporters 
+reporter_herk_state.start
+reporter_herk_stat.start
+
+# activate herkulex_sched
+herk_sched.start
+
+# TEST SEQUENCE
+
+var double pi = 3.14;
+
+herk_array.setGoal("servo1", herk_array.JOG_POSITION, 0, 1.15);
+herk_timer.wait(1,2);
+
+herk_array.setGoal("servo1", herk_array.JOG_POSITION, pi/2, 1.15);
+herk_timer.wait(1,1.5);
+
+herk_array.setGoal("servo1", herk_array.JOG_POSITION, -pi/2, 1.15);
+herk_timer.wait(1,1.5);
+
+herk_array.setGoal("servo1", herk_array.JOG_POSITION, pi/2, 1.15);
+herk_timer.wait(1,0.5);
+herk_array.setGoal("servo1", herk_array.JOG_POSITION, -pi/2, 1.15);
+herk_timer.wait(1,1.5);
+
+herk_array.setRegisterRAM("servo1", "acceleration_ratio", 0);
+
+herk_array.setGoal("servo1", herk_array.JOG_POSITION, pi/2, 0);
+herk_timer.wait(1,1);
+
+herk_array.setGoal("servo1", herk_array.JOG_POSITION, -pi/2, 1.15);
+herk_timer.wait(1,2);
+
+herk_array.setGoal("servo1", herk_array.JOG_POSITION, pi/2, 1.15);
+herk_timer.wait(1,0.5);
+herk_array.setGoal("servo1", herk_array.JOG_POSITION, -pi/2, 1.15);
+herk_timer.wait(1,1.5);
+
+herk_array.setRegisterRAM("servo1", "position_kp", 20);
+herk_array.setRegisterRAM("servo1", "position_kd", 0);
+
+herk_array.setGoal("servo1", herk_array.JOG_POSITION, pi/2, 1.15);
+herk_timer.wait(1,0.5);
+herk_array.setGoal("servo1", herk_array.JOG_POSITION, -pi/2, 1.15);
+herk_timer.wait(1,2);
+
+
+# STOP
+
+reporter_herk_state.stop
+reporter_herk_stat.stop
+

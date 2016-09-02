@@ -5,7 +5,7 @@
     <description>Herkulex servo description.</description>
 	<struct name="broadcast" type="PropertyBag">
 		<description>Broadcast ID.</description>
-		<simple name="hw_id" type="ulong">
+		<simple name="servo_id" type="ulong">
 			<description>Servo hardware ID.</description>
 			<value>254</value>
 		</simple>
@@ -25,9 +25,9 @@
 			</simple>
 		</struct>
 	</struct>
-	<struct name="test_servo" type="PropertyBag">
+	<struct name="servo1" type="PropertyBag">
 		<description>Test servo entry.</description>
-		<simple name="hw_id" type="ulong">
+		<simple name="servo_id" type="ulong">
 			<description>Servo hardware ID.</description>
 			<value>0</value>
 		</simple>
@@ -44,6 +44,28 @@
 			<simple name="led_control" type="ulong">
 				<description>Led status.</description>
 				<value>1</value>
+			</simple>
+		</struct>
+	</struct>
+	<struct name="servo2" type="PropertyBag">
+		<description>Test servo entry.</description>
+		<simple name="servo_id" type="ulong">
+			<description>Servo hardware ID.</description>
+			<value>1</value>
+		</simple>
+		<simple name="offset" type="ulong">
+			<description>Servo zero position offset (raw).</description>
+			<value>512</value>
+		</simple>
+		<simple name="reverse" type="boolean">
+			<description>Reverse direction flag.</description>
+			<value>0</value>
+		</simple>
+		<struct name="registers_init" type="PropertyBag">
+			<description>Values written to servo RAM register after reboot.</description>
+			<simple name="led_control" type="ulong">
+				<description>Led status.</description>
+				<value>2</value>
 			</simple>
 		</struct>
 	</struct>

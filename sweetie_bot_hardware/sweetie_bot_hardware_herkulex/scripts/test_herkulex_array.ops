@@ -1,0 +1,31 @@
+# TEST HERKULEX_ARRAY
+#
+# Set trajectory via CM interface?
+# store position and statistics to files:
+#
+#     state.out (herkulex srvos state)
+#     statistics.out (package statistics)
+
+import("rtt_ros");
+ros.import("rtt_rospack");
+
+var string herk_script_path = ros.find("sweetie_bot_hardware_herkulex") + "/scripts/"
+
+# LOAD HERKULEX_* SUBSYSTEM
+
+runScript(herk_script_path + "herkulex_array_conf.ops");
+
+
+# TEST SEQUENCEA
+
+herk_array.listServos()
+
+herk_array.printAllServoStatuses();
+herk_array.printAllRegistersRAM("servo1");
+
+herk_array.publishJointStates();
+herk_array.joints.last
+
+herk_array.setRegisterRAM("servo1", "led_control", 7);
+
+herk_array.discoverServos();
