@@ -37,7 +37,11 @@ namespace herkulex_servo {
 		public:
 			RegisterMapper(const std::vector<Register>& regs);
 
-			const Register& getByName(const std::string& name) const { return *name_map.at(name); }
+			const Register& getByName(const std::string& name) const { 
+				auto reg = name_map.find(name); 
+				if (reg == name_map.end()) throw std::out_of_range("herkulex_servo::RegisterMapper unknown register \'" + name + "\'.");
+				return *(reg->second);
+			}
 			const Register& getByNum(unsigned int num) const { return registers.at(num); }
 			const Register& getByEEPadr(unsigned int eep_adr) const { return *eep_map.at(eep_adr); }
 			const Register& getByRAMadr(unsigned int ram_adr) const { return *ram_map.at(ram_adr); }
@@ -219,7 +223,7 @@ namespace herkulex_servo {
 			AckCallback ackCallbackRead_ram(const std::string& reg, unsigned int& val, Status& status) const {
 				return boost::bind(&HerkulexServo::ackRead_ram, this, _1, boost::cref(reg), boost::ref(val), boost::ref(status));
 			}
-			AckCallback ackCallbackRead_epp(const std::string& reg, unsigned int& val, Status& status) const {
+			AckCallback ackCallbackRead_eep(const std::string& reg, unsigned int& val, Status& status) const {
 				return boost::bind(&HerkulexServo::ackRead_eep, this, _1, boost::cref(reg), boost::ref(val), boost::ref(status));
 			}
 			AckCallback ackCallbackWrite_ram(Status& status) const {

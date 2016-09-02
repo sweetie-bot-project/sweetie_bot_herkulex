@@ -8,6 +8,7 @@ namespace herkulex_servo {
 	class HerkulexServoDRS101 : public HerkulexServo
 	{
 		public:
+			static const unsigned int POS_RAW_MAX;
 			static const double POS_CONV_COEFF_RAW2RAD;
 			static const double VEL_CONV_COEFF_RAW2RADS;
 			static const double TIME_CONV_COEFF_RAW2SEC;
@@ -15,7 +16,7 @@ namespace herkulex_servo {
 			static const RegisterMapper register_mapper_drs101;
 	
 		public:	
-			HerkulexServoDRS101(const std::string& _name, unsigned int _hw_id, bool _reverse, int _offset);
+			HerkulexServoDRS101(const std::string& _name, unsigned int _hw_id, bool _reverse = false, int _offset = POS_RAW_MAX/2);
 
 			virtual double convertVelRawToRad(unsigned int raw) const;
 			virtual unsigned int convertVelRadToRaw(double vel) const;

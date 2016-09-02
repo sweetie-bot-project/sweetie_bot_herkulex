@@ -45,7 +45,8 @@ class HerkulexArray : public RTT::TaskContext
 		// cached servo configuration
 		herkulex_servo::HerkulexServoArray servos; /**< Servo sructures */
 		std::map< std::string, std::shared_ptr<herkulex_servo::RegisterValues> > servos_init; /**< Registers initializeted on startup. */
-		std::shared_ptr<herkulex_servo::HerkulexServo> broadcast; /**< Fictive servo with broadcast ID */
+		std::shared_ptr<herkulex_servo::HerkulexServo> broadcast; /**< Fictive servo with broadcast ID. */
+		std::shared_ptr<herkulex_servo::RegisterValues> broadcast_init; /**< Global servo configuration. */
 		// port buffer
 		sensor_msgs::JointState joints;
 		// packet buffers
@@ -80,6 +81,9 @@ class HerkulexArray : public RTT::TaskContext
 		unsigned long getRegisterRAM(const std::string& servo, const std::string& reg);
 		bool setRegisterRAM(const std::string& servo, const std::string& reg, unsigned int val);
 
+		unsigned long getRegisterEEP(const std::string& servo, const std::string& reg);
+		bool setRegisterEEP(const std::string& servo, const std::string& reg, unsigned int val);
+
 		bool setGoalRaw(const std::string& servo, unsigned int mode, unsigned int goal, unsigned int playtime);
 		bool setGoal(const std::string& servo, unsigned int mode, double goal, double playtime);
 
@@ -96,6 +100,8 @@ class HerkulexArray : public RTT::TaskContext
 		void printErrorServoStatuses();
 		void printRegisterRAM(const std::string& servo, const std::string& reg);
 		void printAllRegistersRAM(const std::string& servo);
+
+		void discoverServos();
 
 		// OPERATIONS: PROVIDED (protocol interface)
 		bool reqIJOG(herkulex_servo::HerkulexPacket& req, const sweetie_bot_hardware_herkulex_msgs::ServoGoal& goal);
