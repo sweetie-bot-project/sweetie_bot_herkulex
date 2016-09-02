@@ -34,7 +34,7 @@ HerkulexArray::HerkulexArray(std::string const& name) :
 	timeout_timer(this),
 	break_loop_flag(false)
 {
-	Logger::In("HerkulexPacket");
+	Logger::In in("HerkulexArray");
 
 	// BASIC INITIALIZATION
 	// Start timer thread.
@@ -170,7 +170,7 @@ HerkulexArray::HerkulexArray(std::string const& name) :
 
 bool HerkulexArray::configureHook()
 {
-	Logger::In("HerkulexArray");
+	Logger::In in("HerkulexArray");
 
 	servos.clear();
 	servos_init.clear();
@@ -264,7 +264,10 @@ bool HerkulexArray::configureHook()
 		return false;
 	}
 
-	return resetAllServos();
+	if (!resetAllServos()) return false;
+
+	log(Info) << "HerkulexArray is configured!" << endlog(); 
+	return true;
 }
 
 const HerkulexServo& HerkulexArray::getServo(const string& name) 
@@ -299,7 +302,7 @@ std::vector<std::string> HerkulexArray::listServos()
 
 std::vector<std::string> HerkulexArray::listServoRegistersRAM(const std::string& servo) 
 {
-	Logger::In("HerkulexArray");
+	Logger::In in("HerkulexArray");
 	std::vector<std::string> list;
 	try {
 		const std::vector<Register>& registers = getServo(servo).register_mapper.registers;
@@ -315,7 +318,7 @@ std::vector<std::string> HerkulexArray::listServoRegistersRAM(const std::string&
 
 unsigned long HerkulexArray::getRegisterRAM(const std::string& servo, const std::string& reg) 
 {
-	Logger::In("HerkulexArray");
+	Logger::In in("HerkulexArray");
 	try {
 		const HerkulexServo& s = getServo(servo);
 		unsigned int val;
@@ -326,7 +329,7 @@ unsigned long HerkulexArray::getRegisterRAM(const std::string& servo, const std:
 		else return READ_ERROR;
 	} 
 	catch (const std::out_of_range& e) {
-		Logger::In("HerkulexArray");
+		Logger::In in("HerkulexArray");
 		log(Error) << e.what() << endlog();
 		return READ_ERROR;
 	}
@@ -334,7 +337,7 @@ unsigned long HerkulexArray::getRegisterRAM(const std::string& servo, const std:
 
 bool HerkulexArray::setRegisterRAM(const std::string& servo, const std::string& reg, unsigned int val)
 {
-	Logger::In("HerkulexArray");
+	Logger::In in("HerkulexArray");
 	try {
 		const HerkulexServo& s = getServo(servo);
 		herkulex_servo::Status status;
@@ -349,7 +352,7 @@ bool HerkulexArray::setRegisterRAM(const std::string& servo, const std::string& 
 
 bool HerkulexArray::setGoalRaw(const std::string& servo, unsigned int mode, unsigned int goal, unsigned int playtime)
 {
-	Logger::In("HerkulexArray");
+	Logger::In in("HerkulexArray");
 	try {
 		const HerkulexServo& s = getServo(servo);
 		herkulex_servo::Status status;
@@ -364,7 +367,7 @@ bool HerkulexArray::setGoalRaw(const std::string& servo, unsigned int mode, unsi
 }
 bool HerkulexArray::setGoal(const std::string& servo, unsigned int mode, double goal, double playtime)
 {
-	Logger::In("HerkulexArray");
+	Logger::In in("HerkulexArray");
 	try {
 		const HerkulexServo& s = getServo(servo);
 		unsigned int goal_raw;
@@ -380,7 +383,7 @@ bool HerkulexArray::setGoal(const std::string& servo, unsigned int mode, double 
 
 unsigned long HerkulexArray::getStatus(const std::string& servo)
 {
-	Logger::In("HerkulexArray");
+	Logger::In in("HerkulexArray");
 	try {
 		const HerkulexServo& s = getServo(servo);
 		herkulex_servo::Status status;
@@ -397,7 +400,7 @@ unsigned long HerkulexArray::getStatus(const std::string& servo)
 
 bool HerkulexArray::clearStatus(const std::string& servo)
 {
-	Logger::In("HerkulexArray");
+	Logger::In in("HerkulexArray");
 	try {
 		const HerkulexServo& s = getServo(servo);
 		herkulex_servo::Status status;
@@ -425,7 +428,7 @@ bool HerkulexArray::setServoRegisters(const HerkulexServo * s, const RegisterVal
 
 bool HerkulexArray::resetServo(const std::string& servo)
 {
-	Logger::In("HerkulexArray");
+	Logger::In in("HerkulexArray");
 	try {
 		const HerkulexServo& s = getServo(servo);
 		herkulex_servo::Status status;
@@ -449,24 +452,26 @@ bool HerkulexArray::resetServo(const std::string& servo)
 
 bool HerkulexArray::resetAllServos() 
 {
-	Logger::In("HerkulexArray");
+	Logger::In in("HerkulexArray");
 	try {
 		// reset all servos
 		broadcast->reqReset(req_pkt);
 		sendPacket(req_pkt);
 
-		//TODO replace with OROCOS timer 
-		sleep(1);
+		//Wait for servos to resert.
+		timeout_timer.arm(TIMEOUT_TIMER_ID, 1.0);
+		timeout_timer.waitFor(TIMEOUT_TIMER_ID);
 
-		// set ack policy NOT WORKING
+		// Set ack policy: BROADCAST IS NOT WORKING
 		//broadcast->reqWrite_ram(req_pkt, "ack_policy", 2);
 		//sendPacket(req_pkt);
-		// global registers init (REMOVED: better set registers value individually)
+		// global registers init 
 		/*const RegisterValues * reg_init = servos_init.at("broadcast");
 		for(RegisterValues::const_iterator r = reg_init->begin(); r != reg_init->end(); r++) {
 			broadcast->reqWrite_ram(req_pkt, r->fist, r->second);
 			sendPacketCM(req_pkt);
 		}*/
+
 		// init servo individually and check status
 		herkulex_servo::Status status;
 		bool success = true;
@@ -509,7 +514,7 @@ bool HerkulexArray::resetAllServos()
 
 bool HerkulexArray::publishJointStates()
 {
-	Logger::In("HerkulexArray");
+	Logger::In in("HerkulexArray");
 	joints.name.clear();
 	joints.position.clear();
 	joints.velocity.clear();
@@ -570,7 +575,7 @@ std::string HerkulexArray::statusToString(herkulex_servo::Status status)
 
 void HerkulexArray::printServoStatus(const std::string& servo)
 {
-	Logger::In("HerkulexArray");
+	Logger::In in("HerkulexArray");
 	try {
 		const HerkulexServo& s = getServo(servo);
 		herkulex_servo::Status status;
@@ -598,7 +603,7 @@ void HerkulexArray::printAllServoStatuses()
 
 void HerkulexArray::printErrorServoStatuses() 
 {
-	Logger::In("HerkulexArray");
+	Logger::In in("HerkulexArray");
 	herkulex_servo::Status status;
 	bool success;
 	for(HerkulexServoArray::const_iterator iter = servos.begin(); iter != servos.end(); iter++) {
@@ -619,7 +624,7 @@ void HerkulexArray::printErrorServoStatuses()
 
 void HerkulexArray::printRegisterRAM(const std::string& servo, const std::string& reg)
 {
-	Logger::In("HerkulexArray");
+	Logger::In in("HerkulexArray");
 	try {
 		const HerkulexServo& s = getServo(servo);
 		unsigned long result = getRegisterRAM(servo, reg);
@@ -639,7 +644,7 @@ void HerkulexArray::printRegisterRAM(const std::string& servo, const std::string
 
 void HerkulexArray::printAllRegistersRAM(const std::string& servo) 
 {
-	Logger::In("HerkulexArray");
+	Logger::In in("HerkulexArray");
 	try {
 		const HerkulexServo& s = getServo(servo);
 		unsigned int val;
@@ -807,7 +812,9 @@ void HerkulexArray::stopHook()
 {
 }
 
-void HerkulexArray::cleanupHook() {
+void HerkulexArray::cleanupHook() 
+{
+	Logger::In in("HerkulexArray");
 	// clear servo properties cache
 	servos.clear();
 	servos_init.clear();
@@ -815,6 +822,7 @@ void HerkulexArray::cleanupHook() {
 	ack_buffer.clear();
 	ack_mutex.unlock();
 	break_loop_flag = false;
+	log(Info) << "HerkulexArray is cleaned up!" << endlog();
 }
 
 /*
