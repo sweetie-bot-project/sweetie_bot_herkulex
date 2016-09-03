@@ -158,7 +158,7 @@ bool HerkulexServoDRS101::ackState(const HerkulexPacket& ack, State& state, Stat
 	if (!ackRead_impl(ack, 54, data, status)) return false;
 	state.pos = convertPosRawToRad(data[0]);
 	state.vel = convertVelRawToRad(data[1]);
-	state.pwm = (int16_t) data[2] / 1023;
+	state.pwm = float(int16_t(data[2])) / 1023.0f;
 	state.pos_goal = convertPosRawToRad(data[4]);;
 	state.pos_desired = convertPosRawToRad(data[5]);;
 	state.vel_desired = convertVelRawToRad(data[6]);
