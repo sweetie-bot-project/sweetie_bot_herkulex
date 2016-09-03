@@ -9,7 +9,7 @@
 #include <orocos/sensor_msgs/typekit/JointState.h>
 #include "orocos/sweetie_bot_hardware_herkulex_msgs/typekit/HerkulexPacket.h"
 #include "orocos/sweetie_bot_hardware_herkulex_msgs/typekit/HerkulexServoState.h"
-#include "orocos/sweetie_bot_hardware_herkulex_msgs/typekit/HerkulexStatistics.h"
+#include "orocos/sweetie_bot_hardware_herkulex_msgs/typekit/HerkulexSchedStatistics.h"
 #include "orocos/sweetie_bot_hardware_herkulex_msgs/typekit/ServoGoal.h"
 
 #define SCHED_STATISTICS
@@ -24,7 +24,7 @@ class HerkulexSched : public RTT::TaskContext
 
 		typedef sweetie_bot_hardware_herkulex_msgs::HerkulexPacket HerkulexPacket;
 		typedef sweetie_bot_hardware_herkulex_msgs::HerkulexServoState HerkulexServoState;
-		typedef sweetie_bot_hardware_herkulex_msgs::HerkulexStatistics HerkulexStatistics;
+		typedef sweetie_bot_hardware_herkulex_msgs::HerkulexSchedStatistics HerkulexSchedStatistics;
 		typedef sweetie_bot_hardware_herkulex_msgs::ServoGoal ServoGoal;
 
 		class SchedTimer : public RTT::os::Timer {
@@ -54,9 +54,9 @@ class HerkulexSched : public RTT::TaskContext
 		// timer
 		SchedTimer timer;
 #ifdef SCHED_STATISTICS
-		HerkulexStatistics statistics;
+		HerkulexSchedStatistics statistics;
 		const RTT::os::TimeService * time_service;
-		RTT::os::TimeService::ticks statistics_round_timestamp;
+		RTT::os::TimeService::ticks statistics_sync_timestamp;
 #endif /* SCHED_STATISTICS */
 
 	    // COMPONENT INTERFACE
@@ -67,7 +67,7 @@ class HerkulexSched : public RTT::TaskContext
 		RTT::OutputPort<sensor_msgs::JointState> joints_port;
 		RTT::OutputPort<HerkulexServoState> states_port;
 #ifdef SCHED_STATISTICS
-		RTT::OutputPort<HerkulexStatistics> statistics_port;
+		RTT::OutputPort<HerkulexSchedStatistics> statistics_port;
 #endif /* SCHED_STATISTICS */
 
 		// Properties

@@ -49,7 +49,7 @@ add_message_files(
   HerkulexPacket.msg
   HerkulexPacket.msg
   HerkulexServoState.msg
-  HerkulexStatistics.msg
+  HerkulexSchedStatistics.msg
   ServoGoal.msg
   Status.msg
 )

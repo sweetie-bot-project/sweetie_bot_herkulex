@@ -156,13 +156,15 @@ void HerkulexSched::clearPortBuffers() {
 	states.vel_desired.clear();
 	//}
 #ifdef SCHED_STATISTICS
-	// reset statistics
-	statistics.jog_send_duration = 0;
-	statistics.avg_request_duration = 0;
-	statistics.rt_round_duration = 0;
-	statistics.n_success = 0;
-	statistics.n_errors = 0;
+	// reset statistics frame
+	statistics.rt_jog_send_duration = 0;
+	statistics.rt_read_start_time = 0;
+	statistics.rt_read_req_duration1 = 0;
+	statistics.rt_read_req_durationN = 0;
+	statistics.rt_read_n_successes = 0;
+	statistics.rt_read_n_errors = 0;
 	statistics.last_erroneous_status = 0;
+	statistics.cm_start_time = 0;
 #endif /* SCHED_STATISTICS */
 }
 
@@ -182,7 +184,7 @@ bool HerkulexSched::startHook()
 
 	// start timer
 	if (!timer.getActivity()->thread()->start()) {
-		log(Error) << "Unable start timer." << endlog(); 
+		log(Error) << "Unable to start timer." << endlog(); 
 		return false;
 	}
 	log(Info) << "HerkulexSched is started!" << endlog(); 
@@ -204,11 +206,15 @@ void HerkulexSched::updateHook()
 			// wait sync and send JOG command
 			if (sync_port.read(timer_id) == NewData) {
 				timer.arm(ROUND_TIMER, this->period_RT_JOG);
+#ifdef SCHED_STATISTICS
+				statistics_sync_timestamp = time_service->getTicks();
+#endif /* SCHED_STATISTICS */
+
 				goals_port.read(goals, false);
 
 				if (goals.name.size() != goals.target_pos.size() || goals.name.size() != goals.playtime.size()) {
 					Logger::In in("HerkulexSched");
-					log(Warning) << "goal message has incorrect structure." << endlog();
+					log(Warning) << "Goal message has incorrect structure." << endlog();
 				}
 				else {
 					reqIJOG(req_pkt, goals);
@@ -227,7 +233,7 @@ void HerkulexSched::updateHook()
 				poll_list_index = 0;
 				clearPortBuffers();
 #ifdef SCHED_STATISTICS
-				statistics.jog_send_duration = this->period_RT_JOG - timer.timeRemaining(ROUND_TIMER);
+				statistics.rt_jog_send_duration = time_service->secondsSince(statistics_sync_timestamp);
 #endif /* SCHED_STATISTICS */
 
 				sched_state = SEND_JOG_WAIT;
@@ -252,7 +258,7 @@ void HerkulexSched::updateHook()
 			sched_state = SEND_READ_REQ;
 			timer.arm(ROUND_TIMER, period_RT_read);
 #ifdef SCHED_STATISTICS
-			statistics_round_timestamp = time_service->getTicks();
+				statistics.rt_read_start_time = time_service->secondsSince(statistics_sync_timestamp);
 #endif /* SCHED_STATISTICS */
 
 		case SEND_READ_REQ:
@@ -264,7 +270,7 @@ void HerkulexSched::updateHook()
 				states_port.write(states);
 
 #ifdef SCHED_STATISTICS
-				statistics.rt_round_duration = time_service->secondsSince(statistics_round_timestamp);
+				statistics.cm_start_time = time_service->secondsSince(statistics_sync_timestamp);
 				statistics_port.write(statistics);
 #endif /* SCHED_STATISTICS */
 
@@ -310,7 +316,7 @@ void HerkulexSched::updateHook()
 				poll_list_index++;
 				sched_state = SEND_READ_REQ;
 #ifdef SCHED_STATISTICS
-				statistics.n_errors++;
+				statistics.rt_read_n_errors++;
 #endif /* SCHED_STATISTICS */
 				if (log().getLogLevel() >= Logger::Debug) {
 					Logger::In in("HerkulexSched");
@@ -353,8 +359,11 @@ void HerkulexSched::updateHook()
 						states.status.push_back(status);
 					}
 #ifdef SCHED_STATISTICS
-					statistics.avg_request_duration = (statistics.n_success * statistics.avg_request_duration + timeout - timer.timeRemaining(REQUEST_TIMEOUT_TIMER)) / (statistics.n_success + 1);
-					statistics.n_success++;
+					statistics.rt_read_req_durationN = timeout - timer.timeRemaining(REQUEST_TIMEOUT_TIMER);
+					if (statistics.rt_read_n_successes + statistics.rt_read_n_errors == 0) {
+						statistics.rt_read_req_duration1 = statistics.rt_read_req_durationN;
+					}
+					statistics.rt_read_n_successes++;
 #endif /* SCHED_STATISTICS */
 					timer.killTimer(REQUEST_TIMEOUT_TIMER);
 					poll_list_index++;
