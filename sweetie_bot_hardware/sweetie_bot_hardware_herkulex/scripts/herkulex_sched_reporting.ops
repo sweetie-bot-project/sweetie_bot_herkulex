@@ -12,4 +12,4 @@ loadComponent("reporter_herk_state", "OCL::FileReporting");
 reporter_herk_state.WriteHeader = 0;
 reporter_herk_state.ReportFile = "state.out";
 addPeer("reporter_herk_state", "herk_sched");
-reporter_herk_state.reportPort("herk_sched", "states");
+reporter_herk_state.reportPort("herk_sched", "out_states");

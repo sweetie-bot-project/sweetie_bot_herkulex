@@ -46,11 +46,11 @@ HerkulexSched::HerkulexSched(std::string const& name) :
 	// Ports
 	this->addEventPort("sync", sync_port)
 		.doc("Timer syncronization event. This event indicates start of real time exchange round.");
-	this->addPort("goals", goals_port)
+	this->addPort("in_goals", goals_port)
 		.doc("Servo goals.");
-	this->addPort("joints", joints_port)
+	this->addPort("out_joints", joints_port)
 		.doc("Position and speed of servos from poll list.");
-	this->addPort("states", states_port)
+	this->addPort("out_states", states_port)
 		.doc("State of servos from poll list. The level of verbosity depends on detailed_state property."); 
 #ifdef SCHED_STATISTICS
 	this->addPort("statistics", statistics_port)

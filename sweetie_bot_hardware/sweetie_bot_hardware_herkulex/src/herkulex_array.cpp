@@ -71,7 +71,7 @@ HerkulexArray::HerkulexArray(std::string const& name) :
 		.set(0.1);
 
 	// PORTS
-	this->addPort("joints", joints_port).doc("Output JointState by request.");
+	this->addPort("out_joints", joints_port).doc("Publish JointState by request.");
 
 	// OPERATIONS
 	// Data link interface

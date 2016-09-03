@@ -24,7 +24,7 @@ herk_array.printAllServoStatuses();
 herk_array.printAllRegistersRAM("servo1");
 
 herk_array.publishJointStates();
-herk_array.joints.last
+herk_array.out_joints.last
 
 herk_array.setRegisterRAM("servo1", "led_control", 7);
 
