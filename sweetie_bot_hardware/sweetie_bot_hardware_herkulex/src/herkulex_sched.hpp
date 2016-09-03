@@ -85,20 +85,21 @@ class HerkulexSched : public RTT::TaskContext
 	protected:
 		// OPERATIONS: DATA LINK INTERFACE
 		// Operations: provided
-		void receivePacketDL(const sweetie_bot_hardware_herkulex_msgs::HerkulexPacket& pkt);
+		void receivePacketDL(const HerkulexPacket& pkt);
 		// Operations: required
-		RTT::OperationCaller<void(const sweetie_bot_hardware_herkulex_msgs::HerkulexPacket& pkt)> sendPacketDL;
+		RTT::OperationCaller<void(const HerkulexPacket& pkt)> sendPacketDL;
+		RTT::OperationCaller<void()> waitSendPacketDL;
 		// OPERATIONS: CONFIGURATION AND MONITORING INTERFACE
 		// Operations: provided
-		void sendPacketCM(const sweetie_bot_hardware_herkulex_msgs::HerkulexPacket& pkt);
+		void sendPacketCM(const HerkulexPacket& pkt);
 		// Operations: required
-		RTT::OperationCaller<void(const sweetie_bot_hardware_herkulex_msgs::HerkulexPacket& pkt)> receivePacketCM;
+		RTT::OperationCaller<void(const HerkulexPacket& pkt)> receivePacketCM;
 		// OPERATIONS: PROTOCOL
-		RTT::OperationCaller<bool (sweetie_bot_hardware_herkulex_msgs::HerkulexPacket& req, const sweetie_bot_hardware_herkulex_msgs::ServoGoal& goal)> reqIJOG;
-		RTT::OperationCaller<bool (sweetie_bot_hardware_herkulex_msgs::HerkulexPacket& req, const std::string& servo)> reqPosVel;
-		RTT::OperationCaller<bool (const sweetie_bot_hardware_herkulex_msgs::HerkulexPacket& ack, const std::string& servo, double& pos, double& vel, unsigned int& status)> ackPosVel;
-		RTT::OperationCaller<bool (sweetie_bot_hardware_herkulex_msgs::HerkulexPacket& req, const std::string& servo)> reqState;
-		RTT::OperationCaller<bool (const sweetie_bot_hardware_herkulex_msgs::HerkulexPacket& ack, const std::string& servo, sweetie_bot_hardware_herkulex_msgs::HerkulexServoState& state, unsigned int& status)> ackState;
+		RTT::OperationCaller<bool (HerkulexPacket& req, const ServoGoal& goal)> reqIJOG;
+		RTT::OperationCaller<bool (HerkulexPacket& req, const std::string& servo)> reqPosVel;
+		RTT::OperationCaller<bool (const HerkulexPacket& ack, const std::string& servo, double& pos, double& vel, unsigned int& status)> ackPosVel;
+		RTT::OperationCaller<bool (HerkulexPacket& req, const std::string& servo)> reqState;
+		RTT::OperationCaller<bool (const HerkulexPacket& ack, const std::string& servo, HerkulexServoState& state, unsigned int& status)> ackState;
 
 	public:
 		HerkulexSched(std::string const& name);

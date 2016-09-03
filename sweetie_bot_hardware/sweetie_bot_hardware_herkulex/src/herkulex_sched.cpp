@@ -15,6 +15,7 @@ HerkulexSched::HerkulexSched(std::string const& name) :
 	TaskContext(name, PreOperational),
 	receivePacketCM("receivePacketCM"),
 	sendPacketDL("sendPacketDL"),
+	waitSendPacketDL("waitSendPacketDL"),
 	reqIJOG("reqIJOG"),
 	reqPosVel("reqPosVel"),
 	ackPosVel("ackPosVel"),
@@ -80,6 +81,7 @@ HerkulexSched::HerkulexSched(std::string const& name) :
 		.doc("Servo responce hook operation.") 
 		.arg("pkt", "Received HerkulexPacket.");
 	this->requires()->addOperationCaller(sendPacketDL);
+	this->requires()->addOperationCaller(waitSendPacketDL);
 
 	// OPERATIONS: CONFIGURATION AND MONITORING INTERFACE
 	this->addOperation("sendPacketCM", &HerkulexSched::sendPacketCM, this, ClientThread) 
@@ -232,6 +234,10 @@ void HerkulexSched::updateHook()
 				// reset servo poll variables
 				poll_list_index = 0;
 				clearPortBuffers();
+
+				if (! waitSendPacketDL.ready()) {
+					waitSendPacketDL();
+				}
 #ifdef SCHED_STATISTICS
 				statistics.rt_jog_send_duration = time_service->secondsSince(statistics_sync_timestamp);
 #endif /* SCHED_STATISTICS */
@@ -413,7 +419,7 @@ void HerkulexSched::updateHook()
 }
 				
 
-void HerkulexSched::receivePacketDL(const sweetie_bot_hardware_herkulex_msgs::HerkulexPacket& pkt) 
+void HerkulexSched::receivePacketDL(const HerkulexPacket& pkt) 
 {
 	if (this->isRunning()) {
 		// buffer message to updateHook processing
@@ -432,7 +438,7 @@ void HerkulexSched::receivePacketDL(const sweetie_bot_hardware_herkulex_msgs::He
 	}
 }
 
-void HerkulexSched::sendPacketCM(const sweetie_bot_hardware_herkulex_msgs::HerkulexPacket& pkt) 
+void HerkulexSched::sendPacketCM(const HerkulexPacket& pkt) 
 {
 	if (this->isRunning()) {
 		// buffer message to updateHook processing

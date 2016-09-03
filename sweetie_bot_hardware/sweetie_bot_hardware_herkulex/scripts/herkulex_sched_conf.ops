@@ -29,6 +29,9 @@ connectOperations("herk_sched.sendPacketDL", "herk_driver.sendPacket");
 connectOperations("herk_driver.receivePacket", "herk_sched.receivePacketDL");
 connectServices("herk_array","herk_sched");
 
+# Scheduler waits for completion of JOG command if those operations are connected.
+# connectOperations("herk_sched.waitSendPacketDL", "herk_driver.waitSendPacket");
+
 # TIME PERIODS CONFIGURATION
 
 # How long should scheduler wait for response during RT operations?
@@ -37,7 +40,7 @@ herk_sched.timeout = 0.005;
 # Beware situation where JOG send eats up time of next request operation.
 herk_sched.period_RT_JOG = 0.002; 
 # Scheduler has 10 ms to send RT read request. Actual exchange may last for (period_RT + timeout).
-herk_sched.period_RT_read = 0.08; 
+herk_sched.period_RT_read = 0.008; 
 # Scheduler has 2 ms to forward request packets from CM interface to HerkulexDriver.
 # Actual exchange may lasts until begining of RT_JOG round (period-(period_RT+timeout).
 herk_sched.period_CM = 0.002; 

@@ -38,9 +38,8 @@ HerkulexDriver::HerkulexDriver(std::string const& name) :
 		.doc("Send packet to servos.") 
 		.arg("pkt", "HerkulexPacket to send.");
 
-	this->addOperation("sendPacket_wait", &HerkulexDriver::sendPacketDL_wait, this, OwnThread) 
-		.doc("Send packet to servos and wait until data is actually writen to serial port.") 
-		.arg("pkt", "HerkulexPacket to send.");
+	this->addOperation("waitSendPacket", &HerkulexDriver::waitSendPacketDL, this, OwnThread) 
+		.doc("Wait until last send packet is actually writen to serial port.");
 
 	this->requires()->addOperationCaller(receivePacketDL);
 
@@ -339,18 +338,15 @@ void HerkulexDriver::sendPacketDL(const sweetie_bot_hardware_herkulex_msgs::Herk
 
 }
 
-void HerkulexDriver::sendPacketDL_wait(const sweetie_bot_hardware_herkulex_msgs::HerkulexPacket& pkt) 
+void HerkulexDriver::waitSendPacketDL() 
 {
-	sendPacketDL(pkt);
 	// Wait until all data is written to port.
-	//RTT::os::TimeService::ticks tick = RTT::os::TimeService::Instance()->getTicks();
 	if (TEMP_FAILURE_RETRY(tcdrain(port_fd)) == -1) {
 		Logger::In in("HerkulexDriver");
 		log(Error) << "tcdrain() failed: " << strerror(errno) << endlog(); 
 		this->exception();
 		return;
 	}
-	//std::cout << "tcdrain delay: " << RTT::os::TimeService::Instance()->secondsSince(tick) << std::endl;
 }
 
 void HerkulexDriver::stopHook() 
