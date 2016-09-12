@@ -34,6 +34,8 @@ HerkulexDriver::HerkulexDriver(std::string const& name) :
 	receivePacketDL("receivePacket"),
 	port_fd(-1)
 {
+	Logger::In in("HerkulexDriver");
+
 	this->addOperation("sendPacket", &HerkulexDriver::sendPacketDL, this, OwnThread) 
 		.doc("Send packet to servos.") 
 		.arg("pkt", "HerkulexPacket to send.");
@@ -328,6 +330,10 @@ void HerkulexDriver::sendPacketDL(const sweetie_bot_hardware_herkulex_msgs::Herk
 		bytes_written += retval;
 	}
 	while (bytes_written < pkt_size);
+
+	//TODO make this optional
+	// reset receiver in case future reply
+	recv_state = HEADER1;
 
 	if (log().getLogLevel() >= Logger::Debug) {
 		Logger::In in("HerkulexDriver");
