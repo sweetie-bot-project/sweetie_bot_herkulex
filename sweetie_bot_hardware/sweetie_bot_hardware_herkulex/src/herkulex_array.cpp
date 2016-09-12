@@ -131,6 +131,9 @@ HerkulexArray::HerkulexArray(std::string const& name) :
 		.arg("servo", "Servo name.");
 	this->addOperation("resetAllServos", &HerkulexArray::resetAllServos, this, OwnThread)
 		.doc("Reset all servos and init them again. Must clear all *hard* error status.");
+	this->addOperation("setAllServosTorqueFree", &HerkulexArray::setAllServosTorqueFree, this, OwnThread)
+		.doc("Change torque control mode of all servos.")
+		.arg("torque_free", "If torque_free is true set TorqueFree mode (axises of servos are mannually movable). Use registers_init setting otherwise.");
 
 	this->addOperation("publishJointStates", &HerkulexArray::publishJointStates, this, OwnThread)
 		.doc("Read position and velocity of all servos and publish them on joints port. Return true on success.");
@@ -563,6 +566,50 @@ bool HerkulexArray::resetAllServos()
 		return false;
 	}
 }
+
+bool HerkulexArray::setAllServosTorqueFree(bool torque_free) 
+{
+	Logger::In("HerkulexArray");
+	try {
+		bool success = true;
+
+		for(HerkulexServoArray::const_iterator iter = servos.begin(); iter != servos.end(); iter++) {
+			const HerkulexServo * s = iter->second.get();
+			unsigned int new_mode;
+
+			if (torque_free) {
+				new_mode = 0; 
+			}
+			else {
+				herkulex_servo::RegisterValues::const_iterator reg_value_iter;
+				const herkulex_servo::RegisterValues * reg_init = servos_init.at(s->getName()).get();
+				reg_value_iter = reg_init->find("torque_control");
+				if (reg_value_iter == reg_init->end()) {
+					reg_value_iter = broadcast_init->find("torque_control");
+					if (reg_value_iter == broadcast_init->end()) {
+						// do nothin
+						continue;
+					}
+				}
+				new_mode = reg_value_iter->second;
+			}
+
+			herkulex_servo::Status status;
+			s->reqWrite_ram(req_pkt, "torque_control", new_mode);
+			if (!sendRequest(req_pkt, s->ackCallbackWrite_ram(status))) {
+				log(Error) << "Write " << s->getName() << " \'torque_control\' failed. Skipping servo." << endlog();
+				success = false;
+			}
+		}
+		return success;
+	}
+	catch (const std::out_of_range& e) {
+		log(Error) << e.what() << endlog();
+		return false;
+	}
+}
+
+
 
 bool HerkulexArray::publishJointStates()
 {

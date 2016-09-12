@@ -389,9 +389,9 @@ void HerkulexSched::updateHook()
 			if (!timer.isArmed(ROUND_TIMER)) {
 				SchedTimer::TimerId timer_id;
 				if (sync_port.read(timer_id) == NewData) {
-					// we get sync msg before timer espires
-					Logger::In in("HerkulexSched");
-					log(Error) << "Sync message is received before scheduler rounds have been finished." << endlog();
+					// we get sync msg before timer expires
+					Logger::In("HerkulexSched");
+					log(Error) << "sync message is received before scheduler rounds have been finished." << endlog();
 					this->exception();
 					break;
 				}
@@ -456,8 +456,8 @@ void HerkulexSched::sendPacketCM(const HerkulexPacket& pkt)
 			sendPacketDL(pkt);
 		}
 		else {
-			Logger::In in("HerkulexSched");
-			log(Error) << "Data link layer sendPacketDL operation is not ready." << endlog();
+			Logger::In("HerkulexSched");
+			log(Error) << "Data link layer (sendPacketDL operation) is not ready." << endlog();
 		}
 	}
 }

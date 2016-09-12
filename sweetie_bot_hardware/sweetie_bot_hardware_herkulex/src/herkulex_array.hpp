@@ -92,6 +92,7 @@ class HerkulexArray : public RTT::TaskContext
 
 		bool resetServo(const std::string& servo);
 		bool resetAllServos();
+		bool setAllServosTorqueFree(bool torque_on);
 
 		bool publishJointStates();
 
