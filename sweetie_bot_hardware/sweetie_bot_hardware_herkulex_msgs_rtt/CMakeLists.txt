@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(sweetie_bot_hardware_herkulex_msgs_rtt)
 
-find_package(catkin REQUIRED COMPONENTS rtt_roscomm)
+find_package(catkin REQUIRED COMPONENTS rtt_roscomm sweetie_bot_hardware_herkulex_msgs)
+include_directories(include ${catkin_INCLUDE_DIRS})
 
 ros_generate_rtt_typekit(sweetie_bot_hardware_herkulex_msgs)
 ros_generate_rtt_service_proxies(sweetie_bot_hardware_herkulex_msgs_rtt)

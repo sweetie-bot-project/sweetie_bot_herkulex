@@ -9,6 +9,8 @@
 #include <rtt/RTT.hpp>
 #include <rtt/os/Timer.hpp>
 
+#include <sweetie_bot_logger/logger.hpp>
+
 #include <orocos/sensor_msgs/typekit/JointState.h>
 #include <orocos/sweetie_bot_hardware_herkulex_msgs/typekit/HerkulexPacket.h>
 #include <orocos/sweetie_bot_hardware_herkulex_msgs/typekit/HerkulexServoState.h>
@@ -17,6 +19,9 @@
 
 #include "herkulex_servo.hpp"
 #include "herkulex_servo_drs101.hpp"
+
+namespace sweetie_bot
+{
 
 class HerkulexArray : public RTT::TaskContext
 {
@@ -42,6 +47,8 @@ class HerkulexArray : public RTT::TaskContext
 		static const unsigned int JOG_SPEED;
 
 	protected:
+		// logger
+		sweetie_bot::LoggerOCL log;
 		// cached servo configuration
 		herkulex_servo::HerkulexServoArray servos; /**< Servo sructures */
 		std::map< std::string, std::shared_ptr<herkulex_servo::RegisterValues> > servos_init; /**< Registers initializeted on startup. */
@@ -132,4 +139,6 @@ class HerkulexArray : public RTT::TaskContext
 		void stopHook();
 		void cleanupHook();
 };
+
+}
 #endif

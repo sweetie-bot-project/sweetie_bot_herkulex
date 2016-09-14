@@ -9,12 +9,12 @@ import("sweetie_bot_hardware_herkulex");
 
 # LOAD HERKULEX_* COMPONENTS
 
-loadComponent("herk_array","HerkulexArray");
+loadComponent("herk_array","sweetie_bot::HerkulexArray");
 loadService("herk_array", "marshalling");
 herk_array.marshalling.loadProperties(ros.find("sweetie_bot_hardware_herkulex") + "/scripts/test_servos.cpf");
 herk_array.timeout = 0.01; 
 
-loadComponent("herk_driver","HerkulexDriver");
+loadComponent("herk_driver","sweetie_bot::HerkulexDriver");
 herk_driver.port_name = "/dev/ttyUSB0";
 herk_driver.baudrate = 115200;
 

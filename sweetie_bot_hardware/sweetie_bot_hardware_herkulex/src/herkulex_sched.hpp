@@ -6,13 +6,18 @@
 #include <rtt/RTT.hpp>
 #include <rtt/os/Timer.hpp>
 
+#include <sweetie_bot_logger/logger.hpp>
+
 #include <orocos/sensor_msgs/typekit/JointState.h>
-#include "orocos/sweetie_bot_hardware_herkulex_msgs/typekit/HerkulexPacket.h"
-#include "orocos/sweetie_bot_hardware_herkulex_msgs/typekit/HerkulexServoState.h"
-#include "orocos/sweetie_bot_hardware_herkulex_msgs/typekit/HerkulexSchedStatistics.h"
-#include "orocos/sweetie_bot_hardware_herkulex_msgs/typekit/ServoGoal.h"
+#include <orocos/sweetie_bot_hardware_herkulex_msgs/typekit/HerkulexPacket.h>
+#include <orocos/sweetie_bot_hardware_herkulex_msgs/typekit/HerkulexServoState.h>
+#include <orocos/sweetie_bot_hardware_herkulex_msgs/typekit/HerkulexSchedStatistics.h>
+#include <orocos/sweetie_bot_hardware_herkulex_msgs/typekit/ServoGoal.h>
 
 #define SCHED_STATISTICS
+
+namespace sweetie_bot 
+{
 
 class HerkulexSched : public RTT::TaskContext
 {
@@ -41,6 +46,9 @@ class HerkulexSched : public RTT::TaskContext
 		};
 
 	protected:
+		// logger
+		sweetie_bot::LoggerOCL log;
+		// scheduler state
 		SchedulerState sched_state;
 		int poll_list_index;
 		// package buffers
@@ -109,4 +117,7 @@ class HerkulexSched : public RTT::TaskContext
 		void stopHook();
 		void cleanupHook();
 };
+
+}
+
 #endif

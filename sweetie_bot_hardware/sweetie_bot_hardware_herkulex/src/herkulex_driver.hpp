@@ -4,7 +4,12 @@
 #include <string>
 #include <rtt/RTT.hpp>
 
+#include <sweetie_bot_logger/logger.hpp>
+
 #include "orocos/sweetie_bot_hardware_herkulex_msgs/typekit/HerkulexPacket.h"
+
+namespace sweetie_bot
+{
 
 class HerkulexDriver : public RTT::TaskContext
 {
@@ -16,6 +21,7 @@ class HerkulexDriver : public RTT::TaskContext
 		//static const unsigned int HEADER_SIZE;
 
 	protected:
+		LoggerOCL log;
 		// Port file handler
 		int port_fd;
 		// Receiver state
@@ -46,4 +52,6 @@ class HerkulexDriver : public RTT::TaskContext
 		void stopHook();
 		void cleanupHook();
 };
+
+}
 #endif

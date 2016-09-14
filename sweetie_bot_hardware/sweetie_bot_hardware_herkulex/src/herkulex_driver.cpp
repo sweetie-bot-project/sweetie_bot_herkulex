@@ -17,24 +17,25 @@ extern "C" {
 #include <rtt/Logger.hpp>
 #include <rtt/os/TimeService.hpp>
 
-//TODO Where should be this code?
-std::ostream& resetfmt(std::ostream& s) {
-	s.copyfmt(std::ios(NULL)); 
-	return s;
-}
 
 using namespace RTT;
 using sweetie_bot_hardware_herkulex_msgs::HerkulexPacket;
 
-//const unsigned int HerkulexDriver::BUFFER_SIZE = 223;
-//const unsigned int HerkulexDriver::HEADER_SIZE = 7;
+namespace sweetie_bot
+{
 
 HerkulexDriver::HerkulexDriver(std::string const& name) : 
 	TaskContext(name, PreOperational),
 	receivePacketDL("receivePacket"),
-	port_fd(-1)
+	port_fd(-1),
+	log("sweetie.core.herkulex.driver")
 {
-	Logger::In in("HerkulexDriver");
+	if (!log.ready()) {
+		RTT::Logger::In in("HerkulexDriver");
+		RTT::log(RTT::Error) << "Logger is not ready!" << RTT::endlog();
+		this->fatal();
+		return;
+	}
 
 	this->addOperation("sendPacket", &HerkulexDriver::sendPacketDL, this, OwnThread) 
 		.doc("Send packet to servos.") 
@@ -58,16 +59,14 @@ bool HerkulexDriver::configureHook()
 {
 	struct termios tty;
 
-	Logger::In in("HerkulexDriver");
-
 	port_fd = open(this->port_name_prop.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK );
 	if (port_fd == -1) {
-		log(Error) << "open() serial port \"" << this->port_name_prop << "\" failed: " << strerror(errno) << endlog(); 
+		log(ERROR) << "open() serial port \"" << this->port_name_prop << "\" failed: " << strerror(errno) << endlog(); 
 		return false;
 	}
 	// configure serial port
 	if (tcgetattr (this->port_fd, &tty) != 0) {
-		log(Error) << "tcgetattr() failed: " << strerror(errno) << endlog(); 
+		log(ERROR) << "tcgetattr() failed: " << strerror(errno) << endlog(); 
 		return false;
 	}
 	
@@ -101,11 +100,11 @@ bool HerkulexDriver::configureHook()
 			ret = cfsetspeed (&tty, B230400);
 			break;
 		default:
-			log(Error) << "Incorrect baudrate property value: " << baudrate_prop << endlog(); 
+			log(ERROR) << "Incorrect baudrate property value: " << baudrate_prop << endlog(); 
 			return false;
 	}
 	if (ret) {
-		log(Error) << "cfsetspeed() failed: " << strerror(errno) << endlog(); 
+		log(ERROR) << "cfsetspeed() failed: " << strerror(errno) << endlog(); 
 		return false;
 	}
 	// special properties
@@ -113,34 +112,33 @@ bool HerkulexDriver::configureHook()
 	tty.c_cc[VTIME] = 5;            // 0.5 seconds read timeout, so read will not block forever
 	// configure port
 	if (tcsetattr (this->port_fd, TCSANOW, &tty) != 0) {
-		log(Error) << "tcsetattr() failed: " << strerror(errno) << endlog(); 
+		log(ERROR) << "tcsetattr() failed: " << strerror(errno) << endlog(); 
 		return false;
 	}
 	// Setup FileDescriptorActivity
 	extras::FileDescriptorActivity * activity = dynamic_cast<extras::FileDescriptorActivity *>(this->getActivity());
 	if (! activity) {
-		log(Error) << "Incompatible activity type."  << endlog(); 
+		log(ERROR) << "Incompatible activity type."  << endlog(); 
 		return false;
 	}
 	activity->watch(port_fd);
 	// reserve memory
 	recv_pkt.data.reserve(HerkulexPacket::DATA_SIZE);
-	log(Info) << "HerkulexDriver is configured!" << endlog(); 
+	log(INFO) << "HerkulexDriver is configured!" << endlog(); 
 	return true;
 }
 
 bool HerkulexDriver::startHook()
 {
-	Logger::In in("HerkulexDriver");
 	// flush input buffer
 	int retval = tcflush(port_fd, TCIFLUSH);
 	if (retval == -1) {
-		log(Error) << "tcflush() failed:" << strerror(errno) << endlog(); 
+		log(ERROR) << "tcflush() failed:" << strerror(errno) << endlog(); 
 		return false;
 	}
 	// wait for header
 	recv_state = HEADER1;
-	log(Info) << "HerkulexDriver is started!" << endlog(); 
+	log(INFO) << "HerkulexDriver is started!" << endlog(); 
 	return true;
 }
 
@@ -148,14 +146,14 @@ void HerkulexDriver::updateHook()
 {
 	extras::FileDescriptorActivity * activity = dynamic_cast<extras::FileDescriptorActivity *>(this->getActivity());
 	if (! activity) {
-		Logger::In in("HerkulexDriver");
-		log(Error) << "Incompatible activity type."  << endlog(); 
+		log(ERROR) << "Incompatible activity type."  << endlog(); 
 		this->exception();
+		return;
 	}
 	if (activity->hasError()) {
-		Logger::In in("HerkulexDriver");
-		log(Error) << "FileDescriptorActivity error."  << endlog(); 
+		log(ERROR) << "FileDescriptorActivity error."  << endlog(); 
 		this->exception();
+		return;
 	}
 
 	if (activity->isUpdated(port_fd)) {
@@ -166,27 +164,25 @@ void HerkulexDriver::updateHook()
 		ssize_t retval = TEMP_FAILURE_RETRY(read(port_fd, buffer, sizeof(buffer)));
 		if (retval == 0) return;
 		else if (retval == -1) {
-			Logger::In in("HerkulexDriver");
-			log(Error) << "Read serial port failed:" << strerror(errno) << endlog(); 
+			log(ERROR) << "Read serial port failed:" << strerror(errno) << endlog(); 
 			this->exception();
 		}
 		buffer_size = retval;
 		buffer_index = 0;
 
-		if (log().getLogLevel() >= Logger::Debug) {
-			Logger::In in("HerkulexDriver");
-			log(Debug) << "READ on serial port (" << buffer_size << " bytes):" << std::hex << std::setw(2) << std::setfill('0');
-			for (int i = 0; i < buffer_size; i++) log(Debug) << (unsigned int) buffer[i] << " ";
-			log(Debug) << resetfmt << Logger::nl << "STATE = " << recv_state << endlog();
+		if (log(DEBUG)) {
+			log() << "READ on serial port (" << buffer_size << " bytes):" << std::hex << std::setw(2) << std::setfill('0');
+			for (int i = 0; i < buffer_size; i++) log(DEBUG) << (unsigned int) buffer[i] << " ";
+			log() << resetfmt << std::endl << "STATE = " << recv_state << endlog();
 		}
 
 		// parse new data in buffer
 		for(; buffer_index < buffer_size; buffer_index++) {
 			unsigned char c = buffer[buffer_index];
 
-			/*if (log().getLogLevel() >= Logger::Debug) {
+			/*if (log().getLogLevel() >= Logger::DEBUG) {
 				Logger::In in("HerkulexDriver");
-				log(Debug) << "c = " << std::hex << (unsigned int) c << std::dec << " state = " << recv_state << endlog();
+				log(DEBUG) << "c = " << std::hex << (unsigned int) c << std::dec << " state = " << recv_state << endlog();
 			}*/
 
 			switch (recv_state) {
@@ -228,8 +224,7 @@ void HerkulexDriver::updateHook()
 							break;
 						default:
 							{
-								Logger::In in("HerkulexDriver");
-								log(Warning) << "ACK packet type is unknown, servo = " << std::hex << (unsigned int) recv_pkt.servo_id << " cmd = " << (unsigned int) recv_pkt.command << std::dec << endlog();
+								log(WARN) << "ACK packet type is unknown, servo = " << std::hex << (unsigned int) recv_pkt.servo_id << " cmd = " << (unsigned int) recv_pkt.command << std::dec << endlog();
 							}
 							recv_state = HEADER1;
 							break;
@@ -244,8 +239,7 @@ void HerkulexDriver::updateHook()
 				case CHECKSUM2:
 					if ( c != (~recv_pkt_checksum1 & 0xFE) ) {
 						{
-							Logger::In in("HerkulexDriver");
-							log(Warning) << "ACK packet, checksum2 error, servo = " << std::hex << (unsigned int) recv_pkt.servo_id << " cmd = " << (unsigned int) recv_pkt.command << std::dec << endlog();
+							log(WARN) << "ACK packet, checksum2 error, servo = " << std::hex << (unsigned int) recv_pkt.servo_id << " cmd = " << (unsigned int) recv_pkt.command << std::dec << endlog();
 						}
 						recv_state = HEADER1;
 						break;
@@ -276,8 +270,7 @@ void HerkulexDriver::updateHook()
 							}
 						}
 						else {
-							Logger::In in("HerkulexDriver");
-							log(Warning) << "ACK packet checksum1 error, servo = " << std::hex << (unsigned int) recv_pkt.servo_id << " cmd = " << (unsigned int) recv_pkt.command << std::dec << endlog();
+							log(WARN) << "ACK packet checksum1 error, servo = " << std::hex << (unsigned int) recv_pkt.servo_id << " cmd = " << (unsigned int) recv_pkt.command << std::dec << endlog();
 						}
 						recv_state = HEADER1;
 					}
@@ -295,8 +288,7 @@ void HerkulexDriver::sendPacketDL(const sweetie_bot_hardware_herkulex_msgs::Herk
 	if (!isConfigured()) return;
 
 	if (pkt_size > HerkulexPacket::HEADER_SIZE + HerkulexPacket::DATA_SIZE) {
-		Logger::In in("HerkulexDriver");
-		log(Error) << "REQ packet is too large." << endlog(); 
+		log(ERROR) << "REQ packet is too large." << endlog(); 
 		return;
 	}
 
@@ -322,8 +314,7 @@ void HerkulexDriver::sendPacketDL(const sweetie_bot_hardware_herkulex_msgs::Herk
 	do {
 		ssize_t retval = TEMP_FAILURE_RETRY(write(port_fd, buffer + bytes_written, pkt_size - bytes_written));
 		if (retval == -1) {
-			Logger::In in("HerkulexDriver");
-			log(Error) << "Write to serial port failed: " << strerror(errno) << endlog(); 
+			log(ERROR) << "Write to serial port failed: " << strerror(errno) << endlog(); 
 			this->exception();
 			return;
 		}
@@ -335,11 +326,10 @@ void HerkulexDriver::sendPacketDL(const sweetie_bot_hardware_herkulex_msgs::Herk
 	// reset receiver in case future reply
 	recv_state = HEADER1;
 
-	if (log().getLogLevel() >= Logger::Debug) {
-		Logger::In in("HerkulexDriver");
-		log(Debug) << "WRITE on serial port (" << pkt_size << " bytes):" << std::hex << std::setw(2) << std::setfill('0');
-		for (int i = 0; i < pkt_size; i++) log(Debug) << (unsigned int) buffer[i] << " ";
-		log(Debug) << resetfmt << endlog();
+	if (log(DEBUG)) {
+		log() << "WRITE on serial port (" << pkt_size << " bytes):" << std::hex << std::setw(2) << std::setfill('0');
+		for (int i = 0; i < pkt_size; i++) log(DEBUG) << (unsigned int) buffer[i] << " ";
+		log() << resetfmt << endlog();
 	}
 
 }
@@ -348,8 +338,7 @@ void HerkulexDriver::waitSendPacketDL()
 {
 	// Wait until all data is written to port.
 	if (TEMP_FAILURE_RETRY(tcdrain(port_fd)) == -1) {
-		Logger::In in("HerkulexDriver");
-		log(Error) << "tcdrain() failed: " << strerror(errno) << endlog(); 
+		log(ERROR) << "tcdrain() failed: " << strerror(errno) << endlog(); 
 		this->exception();
 		return;
 	}
@@ -357,16 +346,16 @@ void HerkulexDriver::waitSendPacketDL()
 
 void HerkulexDriver::stopHook() 
 {
-	Logger::In in("HerkulexDriver");
-	log(Info) << "HerkulexDriver is stopped!" << endlog(); 
+	log(INFO) << "HerkulexDriver is stopped!" << endlog(); 
 }
 
 void HerkulexDriver::cleanupHook() {
-	Logger::In in("HerkulexDriver");
 	if (TEMP_FAILURE_RETRY(close(port_fd))) {
-		log(Error) << "close() serial port failed: " << strerror(errno) << endlog(); 
+		log(ERROR) << "close() serial port failed: " << strerror(errno) << endlog(); 
 	}
-	log(Info) << "HerkulexDriver is cleaned up!" << endlog(); 
+	log(INFO) << "HerkulexDriver is cleaned up!" << endlog(); 
+}
+
 }
 
 /*
@@ -381,4 +370,4 @@ void HerkulexDriver::cleanupHook() {
  * If you have put your component class
  * in a namespace, don't forget to add it here too:
  */
-ORO_CREATE_COMPONENT(HerkulexDriver)
+ORO_CREATE_COMPONENT(sweetie_bot::HerkulexDriver)

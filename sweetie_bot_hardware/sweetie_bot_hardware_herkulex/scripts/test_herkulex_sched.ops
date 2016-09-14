@@ -9,15 +9,19 @@
 import("rtt_ros");
 ros.import("rtt_rospack");
 
-var string herk_script_path = ros.find("sweetie_bot_hardware_herkulex") + "/scripts/"
+var string HERKULEX_SCRIPTS = ros.find("sweetie_bot_hardware_herkulex") + "/scripts/"
+var string LOGGER_SCRIPTS = ros.find("sweetie_bot_logger") + "/scripts/"
+
+# LOAD LOGGER
+runScript(LOGGER_SCRIPTS + "logger_conf.ops");
 
 # LOAD HERKULEX_* SUBSYSTEM
 
-runScript(herk_script_path + "herkulex_sched_conf.ops");
+runScript(HERKULEX_SCRIPTS + "herkulex_sched_conf.ops");
 
 # SETUP HERKULEX_* REPORTING
 
-runScript(herk_script_path + "herkulex_sched_reporting.ops");
+runScript(HERKULEX_SCRIPTS + "herkulex_sched_reporting.ops");
 
 # BEGIN TEST
 

@@ -11,6 +11,8 @@ std::ostream& resetfmt(std::ostream& s) {
 
 using namespace RTT;
 
+namespace sweetie_bot {
+
 HerkulexSched::HerkulexSched(std::string const& name) : 
 	TaskContext(name, PreOperational),
 	receivePacketCM("receivePacketCM"),
@@ -23,21 +25,27 @@ HerkulexSched::HerkulexSched(std::string const& name) :
 	ackState("ackState"),
 	cm_req_buffer(10, HerkulexPacket(), true),
 	ack_buffer(10, HerkulexPacket(), true),
-	timer(this)
+	timer(this),
+	log("sweetie.core.herkulex.sched")
 {
-	Logger::In in("HerkulexSched");
+	if (!log.ready()) {
+		RTT::Logger::In in("HerkulexSched");
+		RTT::log(RTT::Error) << "Logger is not ready!" << RTT::endlog();
+		this->fatal();
+		return;
+	}
 
 	// INITIALIZATION
 	// Check timer thread.
 	if (!timer.getActivity() || !timer.getActivity()->thread()) {
-		log(Error) << "Unable to start timer thread.";
+		log(ERROR) << "Unable to start timer thread.";
 		this->fatal();
 		return;
 	}
 #ifdef SCHED_STATISTICS
 	time_service = RTT::os::TimeService::Instance();
 	if (time_service == nullptr) {
-		log(Error) << "Unable to acquare TimeService.";
+		log(ERROR) << "Unable to acquare TimeService.";
 		this->fatal();
 		return;
 	}
@@ -99,15 +107,14 @@ HerkulexSched::HerkulexSched(std::string const& name) :
 
 bool HerkulexSched::configureHook()
 {
-	Logger::In in("HerkulexSched");
 	// check if data link layer is ready
 	if (! sendPacketDL.ready()) {
-		log(Error) << "sendPacketDL opertions is not ready." << endlog(); 
+		log(ERROR) << "sendPacketDL opertions is not ready." << endlog(); 
 		return false;
 	}
 	// check if protocol service presents
 	if (!this->requires("protocol")->ready()) {
-		log(Error) << "protocol service is not ready." << endlog(); 
+		log(ERROR) << "protocol service is not ready." << endlog(); 
 		return false;
 	}
 	// reserve packet buffers
@@ -136,7 +143,7 @@ bool HerkulexSched::configureHook()
 	joints_port.setDataSample(joints);
 	states_port.setDataSample(states);
 
-	log(Info) << "HerkulexSched is configured!" << endlog(); 
+	log(INFO) << "HerkulexSched is configured!" << endlog(); 
 	return true;
 }
 
@@ -172,7 +179,6 @@ void HerkulexSched::clearPortBuffers() {
 
 bool HerkulexSched::startHook()
 {
-	Logger::In in("HerkulexSched");
 
 	sched_state = SEND_JOG;
 
@@ -186,10 +192,10 @@ bool HerkulexSched::startHook()
 
 	// start timer
 	if (!timer.getActivity()->thread()->start()) {
-		log(Error) << "Unable to start timer." << endlog(); 
+		log(ERROR) << "Unable to start timer." << endlog(); 
 		return false;
 	}
-	log(Info) << "HerkulexSched is started!" << endlog(); 
+	log(INFO) << "HerkulexSched is started!" << endlog(); 
 	return true;
 }
 
@@ -198,9 +204,8 @@ void HerkulexSched::updateHook()
 	bool success;
 	SchedTimer::TimerId timer_id;
 
-	if (log().getLogLevel() >= Logger::Debug) {
-		Logger::In in("HerkulexSched");
-		log(Debug) << "updateHook: sched_state = " << sched_state << " timeout_timer = " << timer.timeRemaining(REQUEST_TIMEOUT_TIMER) << " round_timer = " << timer.timeRemaining(ROUND_TIMER) << endlog();
+	if (log(DEBUG)) {
+		log() << "updateHook: sched_state = " << sched_state << " timeout_timer = " << timer.timeRemaining(REQUEST_TIMEOUT_TIMER) << " round_timer = " << timer.timeRemaining(ROUND_TIMER) << endlog();
 	}
 	
 	switch (sched_state) {
@@ -215,17 +220,15 @@ void HerkulexSched::updateHook()
 				goals_port.read(goals, false);
 
 				if (goals.name.size() != goals.target_pos.size() || goals.name.size() != goals.playtime.size()) {
-					Logger::In in("HerkulexSched");
-					log(Warning) << "Goal message has incorrect structure." << endlog();
+					log(WARN) << "Goal message has incorrect structure." << endlog();
 				}
 				else {
 					reqIJOG(req_pkt, goals);
 					sendPacketDL(req_pkt);
 
-					if (log().getLogLevel() >= Logger::Debug) {
-						Logger::In in("HerkulexSched");
-						log(Debug) << "Start RT round." << endlog();
-						log() << Logger::Debug << std::hex << std::setw(2) << std::setfill('0');
+					if (log(DEBUG)) {
+						log() << "Start RT round." << endlog();
+						log() << Logger::DEBUG << std::hex << std::setw(2) << std::setfill('0');
 						log() << "REQ packet: servo_id: "  << (int) req_pkt.servo_id << " cmd: " << (int) req_pkt.command << " data(" << req_pkt.data.size() << "): ";
 						for(auto c = req_pkt.data.begin(); c != req_pkt.data.end(); c++) log() << (int) *c << " ";
 						log() << resetfmt << endlog();
@@ -283,10 +286,9 @@ void HerkulexSched::updateHook()
 				// start configuration and monitoring round
 				sched_state = CM_ROUND;
 				timer.arm(ROUND_TIMER, period_CM);
-				if (log().getLogLevel() >= Logger::Debug) {
-					Logger::In in("HerkulexSched");
-					log(Debug) << "Start CM round." << endlog();
-				}
+
+				log(DEBUG) << "Start CM round." << endlog();
+
 				this->trigger();
 				break;
 			}
@@ -306,9 +308,8 @@ void HerkulexSched::updateHook()
 		
 			timer.arm(REQUEST_TIMEOUT_TIMER, this->timeout);
 			sendPacketDL(req_pkt);
-			if (log().getLogLevel() >= Logger::Debug) {
-				Logger::In in("HerkulexSched");
-				log() << Logger::Debug << std::hex << std::setw(2) << std::setfill('0');
+			if (log(DEBUG)) {
+				log() << Logger::DEBUG << std::hex << std::setw(2) << std::setfill('0');
 				log() << "REQ packet: servo_id: "  << (int) req_pkt.servo_id << " cmd: " << (int) req_pkt.command << " data(" << req_pkt.data.size() << "): ";
 				for(auto c = req_pkt.data.begin(); c != req_pkt.data.end(); c++) log() << (int) *c << " ";
 				log() << resetfmt << endlog();
@@ -324,10 +325,8 @@ void HerkulexSched::updateHook()
 #ifdef SCHED_STATISTICS
 				statistics.rt_read_n_errors++;
 #endif /* SCHED_STATISTICS */
-				if (log().getLogLevel() >= Logger::Debug) {
-					Logger::In in("HerkulexSched");
-					log(Debug) << "ACK timeout" << endlog();
-				}
+				log(DEBUG) << "ACK timeout" << endlog();
+
 				this->trigger();
 				break;
 			}
@@ -344,12 +343,11 @@ void HerkulexSched::updateHook()
 					pos = states.pos.back();
 					vel = states.vel.back();
 				}
-				if (success && log().getLogLevel() >= Logger::Debug) {
-					Logger::In in("HerkulexSched");
-					log() << Logger::Debug << std::hex << std::setw(2) << std::setfill('0');
+				if (success && log(DEBUG)) {
+					log() << std::hex << std::setw(2) << std::setfill('0');
 					log() << "ACK packet: servo_id: " << (int) ack_pkt->servo_id << " cmd: " << (int) ack_pkt->command << " data(" << ack_pkt->data.size() << "): ";
 					for(auto c = ack_pkt->data.begin(); c != ack_pkt->data.end(); c++) log() << (int) *c << " ";
-					log() << resetfmt << Logger::nl << "pos = " << pos << " vel = " << vel << endlog();
+					log() << resetfmt << std::endl << "pos = " << pos << " vel = " << vel << endlog();
 				}
 				ack_buffer.Release(ack_pkt);
 
@@ -390,8 +388,7 @@ void HerkulexSched::updateHook()
 				SchedTimer::TimerId timer_id;
 				if (sync_port.read(timer_id) == NewData) {
 					// we get sync msg before timer expires
-					Logger::In("HerkulexSched");
-					log(Error) << "sync message is received before scheduler rounds have been finished." << endlog();
+					log(ERROR) << "sync message is received before scheduler rounds have been finished." << endlog();
 					this->exception();
 					break;
 				}
@@ -429,10 +426,8 @@ void HerkulexSched::receivePacketDL(const HerkulexPacket& pkt)
 	else {
 		// forward message to CM subsystem
 		if (receivePacketCM.ready()) {
-			if (log().getLogLevel() >= Logger::Debug) {
-				Logger::In in("HerkulexSched");
-				log(Debug) << "Forward packet to CM subsytem." << endlog();
-			}
+			log(DEBUG) << "Forward packet to CM subsytem." << endlog();
+
 			receivePacketCM(pkt);
 		}
 	}
@@ -448,28 +443,25 @@ void HerkulexSched::sendPacketCM(const HerkulexPacket& pkt)
 	else {
 		// forward message to data link layer
 		if (sendPacketDL.ready()) { 
-			if (log().getLogLevel() >= Logger::Debug) {
-				Logger::In in("HerkulexSched");
-				log(Debug) << "Forward packet to DL layer" << endlog();
-			}
+			log(DEBUG) << "Forward packet to DL layer" << endlog();
 
 			sendPacketDL(pkt);
 		}
 		else {
-			Logger::In("HerkulexSched");
-			log(Error) << "Data link layer (sendPacketDL operation) is not ready." << endlog();
+			log(ERROR) << "Data link layer (sendPacketDL operation) is not ready." << endlog();
 		}
 	}
 }
 
 void HerkulexSched::stopHook() 
 {
-	Logger::In in("HerkulexSched");
-	log(Info) << "HerkulexSched is stopped!" << endlog(); 
+	log(INFO) << "HerkulexSched is stopped!" << endlog(); 
 }
 
 void HerkulexSched::cleanupHook() 
 {
+}
+
 }
 
 /*
@@ -484,4 +476,4 @@ void HerkulexSched::cleanupHook()
  * If you have put your component class
  * in a namespace, don't forget to add it here too:
  */
-ORO_CREATE_COMPONENT(HerkulexSched)
+ORO_CREATE_COMPONENT(sweetie_bot::HerkulexSched)
