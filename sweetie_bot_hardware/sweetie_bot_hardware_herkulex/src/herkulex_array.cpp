@@ -20,6 +20,19 @@ using sweetie_bot::Logger;
 namespace sweetie_bot 
 {
 
+std::ostream& operator<<(std::ostream& s, const sweetie_bot_hardware_herkulex_msgs::HerkulexPacket& pkt) 
+{
+	std::ios::fmtflags fmt_flags( s.flags() );
+	s << std::hex << std::setw(2) << std::setfill('0');
+	s << "ACK packet: servo_id: " << (int) pkt.servo_id << " cmd: " << (int) pkt.command << " data(" << std::dec << pkt.data.size() << std::hex << "): ";
+	for(auto c = pkt.data.begin(); c != pkt.data.end(); c++) log() << (int) *c << " ";
+	s << std::endl;
+	s.flags( fmt_flags );
+
+	return s;
+}
+
+
 const unsigned long HerkulexArray::READ_ERROR = 0x10000;
 const unsigned int HerkulexArray::JOG_STOP = herkulex_servo::JOGMode::STOP;
 const unsigned int HerkulexArray::JOG_POSITION = herkulex_servo::JOGMode::POSITION_CONTROL;
@@ -540,9 +553,9 @@ bool HerkulexArray::resetAllServos()
 			s->reqStat(req_pkt);
 			if (sendRequest(req_pkt, s->ackCallbackStat(status))) {
 				if (status.error & herkulex_servo::Status::ERROR_MASK) {
-					std::cout << s->getName() << " ID = " << std::hex << s->getID() << std::dec << statusToString(status) << std::endl;
-					success = false;
+					log(WARN) << s->getName() << " ID = " << std::hex << s->getID() << std::dec << statusToString(status) << endlog();
 				}
+				//TODO invalid packet check
 			}
 			else {
 				log(ERROR) << "Query " << s->getName() << " servo status failed." << endlog();
@@ -902,6 +915,7 @@ bool HerkulexArray::sendRequest(const HerkulexPacket& req, HerkulexServo::AckCal
 			ack_mutex.unlock();
 			if (!ack_buffer.empty()) {
 				pkt_ack = ack_buffer.PopWithoutRelease();
+				//TODO invalid packet flag check
 				success = ack_callback(*pkt_ack);
 
 				if (log(DEBUG)) {
