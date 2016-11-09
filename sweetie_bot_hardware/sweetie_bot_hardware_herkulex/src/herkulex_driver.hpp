@@ -21,7 +21,11 @@ class HerkulexDriver : public RTT::TaskContext
 		//static const unsigned int HEADER_SIZE;
 
 	protected:
-		LoggerOCL log;
+#ifdef SWEETIEBOT_LOGGER
+		SWEETIEBOT_LOGGER log;
+#else
+		sweetie_bot::LoggerRTT log;
+#endif
 		// Port file handler
 		int port_fd;
 		// Receiver state

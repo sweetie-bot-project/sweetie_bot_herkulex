@@ -12,6 +12,17 @@ project(sweetie_bot_hardware_herkulex)
 
 set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} -std=c++11)
 
+set(LOGGER_DEFAULT "" CACHE STRING "Default logger for all packages (LoggerOCL, LoggerLog4Cpp, LoggerRosout, LoggerRTT).")
+set(LOGGER_HERKULEX "" CACHE STRING "Logger for herkulex package (LoggerOCL, LoggerLog4Cpp, LoggerRosout, LoggerRTT).")
+
+if (LOGGER_SERVO_INV)
+	add_definitions(-DSWEETIEBOT_LOGGER=${LOGGER_SERVO_INV})
+elseif(LOGGER_DEFAULT)
+	add_definitions(-DSWEETIEBOT_LOGGER=${LOGGER_DEFAULT})
+else()
+	add_definitions(-DSWEETIEBOT_LOGGER=LoggerRTT)
+endif()
+
 # Use 'source orocos_toolchain/env.sh' if the command below fails:
 find_package(OROCOS-RTT QUIET)
 if (NOT OROCOS-RTT_FOUND)

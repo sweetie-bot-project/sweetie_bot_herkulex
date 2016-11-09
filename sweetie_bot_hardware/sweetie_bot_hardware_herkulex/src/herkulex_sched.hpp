@@ -47,7 +47,11 @@ class HerkulexSched : public RTT::TaskContext
 
 	protected:
 		// logger
-		sweetie_bot::LoggerOCL log;
+#ifdef SWEETIEBOT_LOGGER
+		SWEETIEBOT_LOGGER log;
+#else
+		sweetie_bot::LoggerRTT log;
+#endif
 		// scheduler state
 		SchedulerState sched_state;
 		int poll_list_index;

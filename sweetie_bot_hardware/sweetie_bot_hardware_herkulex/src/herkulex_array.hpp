@@ -48,7 +48,11 @@ class HerkulexArray : public RTT::TaskContext
 
 	protected:
 		// logger
-		sweetie_bot::LoggerOCL log;
+#ifdef SWEETIEBOT_LOGGER
+		SWEETIEBOT_LOGGER log;
+#else
+		sweetie_bot::LoggerRTT log;
+#endif
 		// cached servo configuration
 		herkulex_servo::HerkulexServoArray servos; /**< Servo sructures */
 		std::map< std::string, std::shared_ptr<herkulex_servo::RegisterValues> > servos_init; /**< Registers initializeted on startup. */
