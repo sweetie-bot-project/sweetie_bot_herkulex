@@ -122,6 +122,7 @@ bool HerkulexDriver::configureHook()
 		return false;
 	}
 	activity->watch(port_fd);
+	activity->setTimeout(500); // FIX: 500 ms timeout to wake up updateHook for error processing.
 	// reserve memory
 	recv_pkt.data.reserve(HerkulexPacket::DATA_SIZE);
 	log(INFO) << "HerkulexDriver is configured!" << endlog(); 
