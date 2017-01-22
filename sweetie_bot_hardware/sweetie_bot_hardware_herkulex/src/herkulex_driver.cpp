@@ -122,6 +122,8 @@ bool HerkulexDriver::configureHook()
 		return false;
 	}
 	activity->watch(port_fd);
+	activity->setTimeout(1000); // FIX: FileDescriptorActivity does not call updateHook, when error occurs.
+
 	// reserve memory
 	recv_pkt.data.reserve(HerkulexPacket::DATA_SIZE);
 	log(INFO) << "HerkulexDriver is configured!" << endlog(); 
