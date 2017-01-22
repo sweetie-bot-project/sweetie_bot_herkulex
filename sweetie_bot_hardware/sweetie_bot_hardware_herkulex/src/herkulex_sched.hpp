@@ -54,7 +54,8 @@ class HerkulexSched : public RTT::TaskContext
 #endif
 		// scheduler state
 		SchedulerState sched_state;
-		int poll_list_index;
+		int poll_index;
+		int poll_end_index;
 		// package buffers
 		RTT::base::BufferLockFree<HerkulexPacket> cm_req_buffer;
 		RTT::base::BufferLockFree<HerkulexPacket> ack_buffer;
@@ -88,6 +89,7 @@ class HerkulexSched : public RTT::TaskContext
 		double period_CM;
 		bool detailed_state;
 		std::vector<std::string> poll_list;
+		int poll_round_size;
 		double timeout;
 
 	protected:

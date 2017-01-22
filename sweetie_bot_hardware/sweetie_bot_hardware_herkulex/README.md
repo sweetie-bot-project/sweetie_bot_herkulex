@@ -15,6 +15,8 @@ This component is not meant to work in real-time enviroment.
 `HerkulexSched` provides real-time interface. Control cycle (discretization period) is divided into three rounds:
 1. **`RT_JOG`**. During this round set goal (Herkulex `SJOG`) command is being sent to servos. Servo goals are read from `in_goals` port.
 1. **`RT_read`**. During this round states of servos from `poll_list` are acquared. State includes position, velocity and trajectory generator variables.
+    If `poll_round_size` property < 0 component attempts to request states of all servos. If `poll_round_size` >=0 it requests states only of `poll_round_size` servos
+    and on next round proceeds to next group of `poll_round_size` servos from list.
 1. **`CM`**. During this round requests from `HerkulexArray` are forwarded to data link layer (`HerkulexDriver`). So real-time and non real-time
     submodules can function simulteniously.
 

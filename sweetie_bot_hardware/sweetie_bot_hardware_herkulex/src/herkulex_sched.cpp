@@ -80,6 +80,9 @@ HerkulexSched::HerkulexSched(std::string const& name) :
 		.set(false);
 	this->addProperty("poll_list", poll_list)
 		.doc("List of servos, which state is read during real-time exchange round.");
+	this->addProperty("poll_round_size", poll_round_size)
+		.doc("Maximal number of servos to be polled during RT_READ round. Negative value means attempt to poll all servos.")
+		.set(-1);
 	this->addProperty("timeout", timeout)
 		.doc("Servo request timeout (sec).")
 		.set(0.005);
@@ -189,6 +192,8 @@ bool HerkulexSched::startHook()
 	sync_port.readNewest(timer_id);
 	// get input port sample
 	goals_port.getDataSample(goals);
+	// sart polling from begining of poll list
+	poll_index = 0;
 
 	// start timer
 	if (!timer.getActivity()->thread()->start()) {
@@ -235,7 +240,15 @@ void HerkulexSched::updateHook()
 					}
 				}
 				// reset servo poll variables
-				poll_list_index = 0;
+				if (poll_round_size < 0) { // attempt poll all servos in one round
+					poll_index = 0;
+					poll_end_index = poll_list.size();
+				}
+				else { // poll only poll_round_size servos in current round and preserve poll_index
+					if (poll_index >= poll_list.size()) poll_index = 0; // end of poll list
+					poll_end_index = poll_index + poll_round_size;
+					if (poll_end_index > poll_list.size()) poll_end_index = poll_list.size();
+				}
 				clearPortBuffers();
 
 				if (! waitSendPacketDL.ready()) {
@@ -271,7 +284,8 @@ void HerkulexSched::updateHook()
 #endif /* SCHED_STATISTICS */
 
 		case SEND_READ_REQ:
-			if (poll_list_index >= poll_list.size() || !timer.isArmed(ROUND_TIMER)) {
+
+			if (poll_index >= poll_end_index || !timer.isArmed(ROUND_TIMER)) {
 				// RT round is finished
 				timer.killTimer(ROUND_TIMER);
 
@@ -294,14 +308,14 @@ void HerkulexSched::updateHook()
 			}
 			// form request to servo
 			if (! detailed_state) {
-				success = reqPosVel(req_pkt, poll_list[poll_list_index]);
+				success = reqPosVel(req_pkt, poll_list[poll_index]);
 			}
 			else {
-				success = reqState(req_pkt, poll_list[poll_list_index]);
+				success = reqState(req_pkt, poll_list[poll_index]);
 			}
 			if (!success) {
 				// skip servo
-				poll_list_index++;
+				poll_index++;
 				this->trigger();
 				break;
 			}
@@ -320,7 +334,7 @@ void HerkulexSched::updateHook()
 			
 		case RECEIVE_READ_ACK:
 			if (!timer.isArmed(REQUEST_TIMEOUT_TIMER)) {
-				poll_list_index++;
+				poll_index++;
 				sched_state = SEND_READ_REQ;
 #ifdef SCHED_STATISTICS
 				statistics.rt_read_n_errors++;
@@ -336,10 +350,10 @@ void HerkulexSched::updateHook()
 				double pos, vel;
 				unsigned int status;
 				if (! detailed_state) {
-					success = ackPosVel(*ack_pkt, poll_list[poll_list_index], pos, vel, status);
+					success = ackPosVel(*ack_pkt, poll_list[poll_index], pos, vel, status);
 				}
 				else {
-					success = ackState(*ack_pkt, poll_list[poll_list_index], states, status) ;
+					success = ackState(*ack_pkt, poll_list[poll_index], states, status) ;
 					pos = states.pos.back();
 					vel = states.vel.back();
 				}
@@ -353,11 +367,11 @@ void HerkulexSched::updateHook()
 
 				if (success) {
 					// save request results
-					joints.name.push_back(poll_list[poll_list_index]);
+					joints.name.push_back(poll_list[poll_index]);
 					joints.position.push_back(pos);
 					joints.velocity.push_back(vel);
 					if (!detailed_state) {
-						states.name.push_back(poll_list[poll_list_index]);
+						states.name.push_back(poll_list[poll_index]);
 						states.pos.push_back(pos);
 						states.vel.push_back(vel);
 						states.status.push_back(status);
@@ -370,7 +384,7 @@ void HerkulexSched::updateHook()
 					statistics.rt_read_n_successes++;
 #endif /* SCHED_STATISTICS */
 					timer.killTimer(REQUEST_TIMEOUT_TIMER);
-					poll_list_index++;
+					poll_index++;
 					sched_state = SEND_READ_REQ;
 					this->trigger();
 					break;
