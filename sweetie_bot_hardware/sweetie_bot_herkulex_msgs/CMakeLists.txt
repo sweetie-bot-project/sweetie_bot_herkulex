@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(sweetie_bot_hardware_herkulex_msgs)
+project(sweetie_bot_herkulex_msgs)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)

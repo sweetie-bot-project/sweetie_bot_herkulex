@@ -9,14 +9,14 @@
 #include <sweetie_bot_logger/logger.hpp>
 
 #include <orocos/sensor_msgs/typekit/JointState.h>
-#include <orocos/sweetie_bot_hardware_herkulex_msgs/typekit/HerkulexPacket.h>
-#include <orocos/sweetie_bot_hardware_herkulex_msgs/typekit/HerkulexServoState.h>
-#include <orocos/sweetie_bot_hardware_herkulex_msgs/typekit/HerkulexSchedStatistics.h>
-#include <orocos/sweetie_bot_hardware_herkulex_msgs/typekit/ServoGoal.h>
+#include <orocos/sweetie_bot_herkulex_msgs/typekit/HerkulexPacket.h>
+#include <orocos/sweetie_bot_herkulex_msgs/typekit/HerkulexServoState.h>
+#include <orocos/sweetie_bot_herkulex_msgs/typekit/HerkulexSchedStatistics.h>
+#include <orocos/sweetie_bot_herkulex_msgs/typekit/ServoGoal.h>
 
 #define SCHED_STATISTICS
 
-namespace sweetie_bot 
+namespace herkulex 
 {
 
 class HerkulexSched : public RTT::TaskContext
@@ -27,10 +27,10 @@ class HerkulexSched : public RTT::TaskContext
 			SEND_JOG, SEND_JOG_WAIT, SEND_READ_REQ, RECEIVE_READ_ACK, CM_ROUND
 		};
 
-		typedef sweetie_bot_hardware_herkulex_msgs::HerkulexPacket HerkulexPacket;
-		typedef sweetie_bot_hardware_herkulex_msgs::HerkulexServoState HerkulexServoState;
-		typedef sweetie_bot_hardware_herkulex_msgs::HerkulexSchedStatistics HerkulexSchedStatistics;
-		typedef sweetie_bot_hardware_herkulex_msgs::ServoGoal ServoGoal;
+		typedef sweetie_bot_herkulex_msgs::HerkulexPacket HerkulexPacket;
+		typedef sweetie_bot_herkulex_msgs::HerkulexServoState HerkulexServoState;
+		typedef sweetie_bot_herkulex_msgs::HerkulexSchedStatistics HerkulexSchedStatistics;
+		typedef sweetie_bot_herkulex_msgs::ServoGoal ServoGoal;
 
 		class SchedTimer : public RTT::os::Timer {
 				HerkulexSched * owner;
@@ -48,7 +48,7 @@ class HerkulexSched : public RTT::TaskContext
 	protected:
 		// logger
 #ifdef SWEETIEBOT_LOGGER
-		SWEETIEBOT_LOGGER log;
+		sweetie_bot::SWEETIEBOT_LOGGER log;
 #else
 		sweetie_bot::LoggerRTT log;
 #endif

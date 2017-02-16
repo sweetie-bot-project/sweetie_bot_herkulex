@@ -6,14 +6,16 @@
 
 #include <sweetie_bot_logger/logger.hpp>
 
-#include "orocos/sweetie_bot_hardware_herkulex_msgs/typekit/HerkulexPacket.h"
+#include "orocos/sweetie_bot_herkulex_msgs/typekit/HerkulexPacket.h"
 
-namespace sweetie_bot
+namespace herkulex
 {
 
 class HerkulexDriver : public RTT::TaskContext
 {
 	protected: 
+		typedef sweetie_bot_herkulex_msgs::HerkulexPacket HerkulexPacket;
+
 		enum ReceiverState {
 			HEADER1, HEADER2, PACKET_SIZE, SERVO_ID, CMD, CHECKSUM1, CHECKSUM2, DATA 
 		};
@@ -22,7 +24,7 @@ class HerkulexDriver : public RTT::TaskContext
 
 	protected:
 #ifdef SWEETIEBOT_LOGGER
-		SWEETIEBOT_LOGGER log;
+		sweetie_bot::SWEETIEBOT_LOGGER log;
 #else
 		sweetie_bot::LoggerRTT log;
 #endif
@@ -31,7 +33,7 @@ class HerkulexDriver : public RTT::TaskContext
 		// Receiver state
 		ReceiverState recv_state;
 		// Receive buffers
-		sweetie_bot_hardware_herkulex_msgs::HerkulexPacket recv_pkt;
+		HerkulexPacket recv_pkt;
 		unsigned char recv_pkt_size;
 		unsigned char recv_pkt_checksum1;
 
@@ -43,10 +45,10 @@ class HerkulexDriver : public RTT::TaskContext
 
 	protected:
 		// Operations: provided
-		void sendPacketDL(const sweetie_bot_hardware_herkulex_msgs::HerkulexPacket& pkt);
+		void sendPacketDL(const HerkulexPacket& pkt);
 		void waitSendPacketDL();
 		// Operations: required
-		RTT::OperationCaller<void(const sweetie_bot_hardware_herkulex_msgs::HerkulexPacket& pkt)> receivePacketDL;
+		RTT::OperationCaller<void(const HerkulexPacket& pkt)> receivePacketDL;
 
 	public:
 		HerkulexDriver(std::string const& name);

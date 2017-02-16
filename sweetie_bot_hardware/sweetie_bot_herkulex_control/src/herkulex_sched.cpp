@@ -3,15 +3,17 @@
 #include <rtt/Component.hpp>
 #include <rtt/Logger.hpp>
 
+
+using namespace sweetie_bot;
+using namespace RTT;
+
+namespace herkulex {
+
 //TODO Where should be this code?
 std::ostream& resetfmt(std::ostream& s) {
 	s.copyfmt(std::ios(NULL)); 
 	return s;
 }
-
-using namespace RTT;
-
-namespace sweetie_bot {
 
 HerkulexSched::HerkulexSched(std::string const& name) : 
 	TaskContext(name, PreOperational),
@@ -26,7 +28,7 @@ HerkulexSched::HerkulexSched(std::string const& name) :
 	cm_req_buffer(10, HerkulexPacket(), true),
 	ack_buffer(10, HerkulexPacket(), true),
 	timer(this),
-	log("sweetie.core.herkulex.sched")
+	log("sweetie.motion.herkulex.sched")
 {
 	if (!log.ready()) {
 		RTT::Logger::In in("HerkulexSched");
@@ -233,7 +235,7 @@ void HerkulexSched::updateHook()
 
 					if (log(DEBUG)) {
 						log() << "Start RT round." << endlog();
-						log() << Logger::DEBUG << std::hex << std::setw(2) << std::setfill('0');
+						log() << DEBUG << std::hex << std::setw(2) << std::setfill('0');
 						log() << "REQ packet: servo_id: "  << (int) req_pkt.servo_id << " cmd: " << (int) req_pkt.command << " data(" << req_pkt.data.size() << "): ";
 						for(auto c = req_pkt.data.begin(); c != req_pkt.data.end(); c++) log() << (int) *c << " ";
 						log() << resetfmt << endlog();
@@ -323,7 +325,7 @@ void HerkulexSched::updateHook()
 			timer.arm(REQUEST_TIMEOUT_TIMER, this->timeout);
 			sendPacketDL(req_pkt);
 			if (log(DEBUG)) {
-				log() << Logger::DEBUG << std::hex << std::setw(2) << std::setfill('0');
+				log() << DEBUG << std::hex << std::setw(2) << std::setfill('0');
 				log() << "REQ packet: servo_id: "  << (int) req_pkt.servo_id << " cmd: " << (int) req_pkt.command << " data(" << req_pkt.data.size() << "): ";
 				for(auto c = req_pkt.data.begin(); c != req_pkt.data.end(); c++) log() << (int) *c << " ";
 				log() << resetfmt << endlog();
@@ -490,4 +492,4 @@ void HerkulexSched::cleanupHook()
  * If you have put your component class
  * in a namespace, don't forget to add it here too:
  */
-ORO_CREATE_COMPONENT(sweetie_bot::HerkulexSched)
+ORO_CREATE_COMPONENT(herkulex::HerkulexSched)

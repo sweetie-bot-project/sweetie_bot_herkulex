@@ -8,11 +8,13 @@
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
 
-#include <orocos/sweetie_bot_hardware_herkulex_msgs/typekit/HerkulexPacket.h>
+#include <orocos/sweetie_bot_herkulex_msgs/typekit/HerkulexPacket.h>
 
-namespace herkulex_servo {
+namespace herkulex {
 
-	typedef sweetie_bot_hardware_herkulex_msgs::HerkulexPacket HerkulexPacket;
+namespace servo {
+
+	typedef sweetie_bot_herkulex_msgs::HerkulexPacket HerkulexPacket;
 
 	struct Register {
 		signed char reg_num; // acording to manual
@@ -39,7 +41,7 @@ namespace herkulex_servo {
 
 			const Register& getByName(const std::string& name) const { 
 				auto reg = name_map.find(name); 
-				if (reg == name_map.end()) throw std::out_of_range("herkulex_servo::RegisterMapper unknown register \'" + name + "\'.");
+				if (reg == name_map.end()) throw std::out_of_range("herkulex::RegisterMapper unknown register \'" + name + "\'.");
 				return *(reg->second);
 			}
 			const Register& getByNum(unsigned int num) const { return registers.at(num); }
@@ -140,7 +142,7 @@ namespace herkulex_servo {
 	class HerkulexServo
 	{
 		public: 
-			typedef  boost::function<bool(const sweetie_bot_hardware_herkulex_msgs::HerkulexPacket&)> AckCallback;
+			typedef  boost::function<bool(const sweetie_bot_herkulex_msgs::HerkulexPacket&)> AckCallback;
 
 		protected:
 			std::string name;
@@ -272,6 +274,9 @@ namespace herkulex_servo {
 	};
 
 	typedef std::unordered_map< std::string, std::shared_ptr<HerkulexServo> > HerkulexServoArray;
-};
+
+} // namespace servo
+
+} // namespace herkulex
 			
 #endif  /*HERKULEX_SERVO_HPP*/

@@ -14,21 +14,20 @@ extern "C" {
 
 #include <rtt/Component.hpp>
 #include <rtt/extras/FileDescriptorActivity.hpp>
-#include <rtt/Logger.hpp>
 #include <rtt/os/TimeService.hpp>
 
 
+using namespace sweetie_bot;
 using namespace RTT;
-using sweetie_bot_hardware_herkulex_msgs::HerkulexPacket;
 
-namespace sweetie_bot
+namespace herkulex
 {
 
 HerkulexDriver::HerkulexDriver(std::string const& name) : 
 	TaskContext(name, PreOperational),
 	receivePacketDL("receivePacket"),
 	port_fd(-1),
-	log("sweetie.core.herkulex.driver")
+	log("sweetie.motion.herkulex.driver")
 {
 	if (!log.ready()) {
 		RTT::Logger::In in("HerkulexDriver");
@@ -71,6 +70,7 @@ bool HerkulexDriver::configureHook()
 	}
 	
 	// 8-bits, 1 STOP bit, enable receiver, ignore modem lines
+	//tty.c_cflag = CS8 | CREAD | CSTOPB | CLOCAL; 
 	tty.c_cflag = CS8 | CREAD | CLOCAL; 
 	// no signaling chars, no echo, no canonical processing
 	tty.c_lflag = 0;
@@ -122,7 +122,6 @@ bool HerkulexDriver::configureHook()
 		return false;
 	}
 	activity->watch(port_fd);
-	activity->setTimeout(1000); // FIX: FileDescriptorActivity does not call updateHook, when error occurs.
 
 	// reserve memory
 	recv_pkt.data.reserve(HerkulexPacket::DATA_SIZE);
@@ -212,15 +211,15 @@ void HerkulexDriver::updateHook()
 				case CMD:
 					switch (c) {
 						//TODO ACK mask
-						case sweetie_bot_hardware_herkulex_msgs::HerkulexPacket::ACK_EEP_READ:
-						case sweetie_bot_hardware_herkulex_msgs::HerkulexPacket::ACK_RAM_READ:
-						case sweetie_bot_hardware_herkulex_msgs::HerkulexPacket::ACK_EEP_WRITE:
-						case sweetie_bot_hardware_herkulex_msgs::HerkulexPacket::ACK_RAM_WRITE:
-						case sweetie_bot_hardware_herkulex_msgs::HerkulexPacket::ACK_S_JOG:
-						case sweetie_bot_hardware_herkulex_msgs::HerkulexPacket::ACK_I_JOG:
-						case sweetie_bot_hardware_herkulex_msgs::HerkulexPacket::ACK_STAT:
-						case sweetie_bot_hardware_herkulex_msgs::HerkulexPacket::ACK_ROLLBACK:
-						case sweetie_bot_hardware_herkulex_msgs::HerkulexPacket::ACK_REBOOT:
+						case HerkulexPacket::ACK_EEP_READ:
+						case HerkulexPacket::ACK_RAM_READ:
+						case HerkulexPacket::ACK_EEP_WRITE:
+						case HerkulexPacket::ACK_RAM_WRITE:
+						case HerkulexPacket::ACK_S_JOG:
+						case HerkulexPacket::ACK_I_JOG:
+						case HerkulexPacket::ACK_STAT:
+						case HerkulexPacket::ACK_ROLLBACK:
+						case HerkulexPacket::ACK_REBOOT:
 							recv_pkt.command = c;
 							recv_state = CHECKSUM1;
 							break;
@@ -282,7 +281,7 @@ void HerkulexDriver::updateHook()
 	} // if (activity->isUpdated(port_fd))
 }
 
-void HerkulexDriver::sendPacketDL(const sweetie_bot_hardware_herkulex_msgs::HerkulexPacket& pkt) 
+void HerkulexDriver::sendPacketDL(const HerkulexPacket& pkt) 
 {
 	unsigned char buffer[HerkulexPacket::HEADER_SIZE + HerkulexPacket::DATA_SIZE];
 	size_t pkt_size = HerkulexPacket::HEADER_SIZE + pkt.data.size();
@@ -352,6 +351,11 @@ void HerkulexDriver::stopHook()
 }
 
 void HerkulexDriver::cleanupHook() {
+	extras::FileDescriptorActivity * activity = dynamic_cast<extras::FileDescriptorActivity *>(this->getActivity());
+	if (! activity) {
+		log(ERROR) << "Incompatible activity type."  << endlog(); 
+	}
+	activity->unwatch(port_fd);
 	if (TEMP_FAILURE_RETRY(close(port_fd))) {
 		log(ERROR) << "close() serial port failed: " << strerror(errno) << endlog(); 
 	}
@@ -372,4 +376,4 @@ void HerkulexDriver::cleanupHook() {
  * If you have put your component class
  * in a namespace, don't forget to add it here too:
  */
-ORO_CREATE_COMPONENT(sweetie_bot::HerkulexDriver)
+ORO_CREATE_COMPONENT(herkulex::HerkulexDriver)

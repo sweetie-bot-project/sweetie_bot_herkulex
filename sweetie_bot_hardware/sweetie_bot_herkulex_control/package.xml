@@ -1,0 +1,28 @@
+<package format="2">
+  <name>sweetie_bot_herkulex_control</name>
+  <version>1.0.0</version>
+  <description>Herkulex Servo driver for SweetieBot robot.</description>
+  <maintainer email="goncharov_oi@yandex.ru">disRecord</maintainer>
+
+  <license>BSD</license>
+
+  <url type="website">https://gitlab.com/sweetie-bot/sweetie_doc/wikis</url>
+  <!-- <url type="bugtracker"></url> -->
+
+  <author>disRecord</author>
+
+  <depend>rtt</depend>
+  <depend>sweetie_bot_logger</depend>
+  <depend>sweetie_bot_herkulex_msgs</depend>
+  <depend>sweetie_bot_herkulex_msgs_rtt</depend>
+  <depend>sensor_msgs</depend>
+  <depend>rtt_sensor_msgs</depend>
+
+  <export>
+	  <rtt_ros>
+		  <!-- Plugin deps are loaded automatically by the rtt_ros import service -->
+		  <plugin_depend>rtt_sensor_msgs</plugin_depend>
+		  <plugin_depend>sweetie_bot_herkulex_msgs_rtt</plugin_depend>
+	  </rtt_ros>
+  </export>
+</package>

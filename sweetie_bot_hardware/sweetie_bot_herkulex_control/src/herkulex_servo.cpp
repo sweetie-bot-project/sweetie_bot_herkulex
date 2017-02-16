@@ -1,8 +1,11 @@
 #include <stdexcept>
 #include "herkulex_servo.hpp"
 
+namespace herkulex {
 
-herkulex_servo::RegisterMapper::RegisterMapper(const std::vector<Register>& _regs) :
+namespace servo {
+
+RegisterMapper::RegisterMapper(const std::vector<Register>& _regs) :
 	registers(_regs)
 {
 	for(std::vector<Register>::const_iterator reg = registers.begin(); reg != registers.end(); reg++) {
@@ -14,7 +17,7 @@ herkulex_servo::RegisterMapper::RegisterMapper(const std::vector<Register>& _reg
 	};
 }
 
-herkulex_servo::HerkulexServo::HerkulexServo(const std::string& _name, const RegisterMapper& _mapper, unsigned int _hw_id, bool _reverse, int _offset) :
+HerkulexServo::HerkulexServo(const std::string& _name, const RegisterMapper& _mapper, unsigned int _hw_id, bool _reverse, int _offset) :
 	register_mapper(_mapper),
 	name(_name),
 	hw_id(_hw_id),
@@ -23,7 +26,7 @@ herkulex_servo::HerkulexServo::HerkulexServo(const std::string& _name, const Reg
 {
 }
 
-void herkulex_servo::HerkulexServo::reqRead_ram(HerkulexPacket& req, const std::string& reg) const
+void HerkulexServo::reqRead_ram(HerkulexPacket& req, const std::string& reg) const
 {
 	req.command = HerkulexPacket::REQ_RAM_READ;
 	req.servo_id = hw_id;
@@ -35,7 +38,7 @@ void herkulex_servo::HerkulexServo::reqRead_ram(HerkulexPacket& req, const std::
 }
 
 
-void herkulex_servo::HerkulexServo::reqRead_eep(HerkulexPacket& req, const std::string& reg) const
+void HerkulexServo::reqRead_eep(HerkulexPacket& req, const std::string& reg) const
 {
 	req.command = HerkulexPacket::REQ_EEP_READ;
 	req.servo_id = hw_id;
@@ -46,7 +49,7 @@ void herkulex_servo::HerkulexServo::reqRead_eep(HerkulexPacket& req, const std::
 	req.data[1] = r.bytes;
 }
 					
-void herkulex_servo::HerkulexServo::reqWrite_impl(HerkulexPacket& req, unsigned int reg_num, unsigned int n, const unsigned int * data) const 
+void HerkulexServo::reqWrite_impl(HerkulexPacket& req, unsigned int reg_num, unsigned int n, const unsigned int * data) const 
 {
 	req.data.resize(2);
 	unsigned int size = 0;
@@ -70,7 +73,7 @@ void herkulex_servo::HerkulexServo::reqWrite_impl(HerkulexPacket& req, unsigned 
 	req.data[1] = size;
 }
 
-void herkulex_servo::HerkulexServo::reqWrite_ram(HerkulexPacket& req, const std::string& reg, unsigned int val) const
+void HerkulexServo::reqWrite_ram(HerkulexPacket& req, const std::string& reg, unsigned int val) const
 {
 	req.servo_id = hw_id;
 	req.command = HerkulexPacket::REQ_RAM_WRITE;
@@ -81,7 +84,7 @@ void herkulex_servo::HerkulexServo::reqWrite_ram(HerkulexPacket& req, const std:
 	req.data[0] = r.ram_addr;
 }
 
-void herkulex_servo::HerkulexServo::reqWrite_eep(HerkulexPacket& req, const std::string& reg, unsigned int val) const 
+void HerkulexServo::reqWrite_eep(HerkulexPacket& req, const std::string& reg, unsigned int val) const 
 {
 	req.servo_id = hw_id;
 	req.command = HerkulexPacket::REQ_EEP_WRITE;
@@ -92,28 +95,28 @@ void herkulex_servo::HerkulexServo::reqWrite_eep(HerkulexPacket& req, const std:
 	req.data[0] = r.eep_addr;
 }
 
-void herkulex_servo::HerkulexServo::reqStat(HerkulexPacket& req) const 
+void HerkulexServo::reqStat(HerkulexPacket& req) const 
 {
 	req.command = HerkulexPacket::REQ_STAT;
 	req.servo_id = hw_id;
 	req.data.resize(0);
 }
 
-void herkulex_servo::HerkulexServo::reqRollback(HerkulexPacket& req) const
+void HerkulexServo::reqRollback(HerkulexPacket& req) const
 {
 	req.command = HerkulexPacket::REQ_ROLLBACK;
 	req.servo_id = hw_id;
 	req.data.resize(0);
 }
 
-void herkulex_servo::HerkulexServo::reqReset(HerkulexPacket& req) const
+void HerkulexServo::reqReset(HerkulexPacket& req) const
 {
 	req.command = HerkulexPacket::REQ_REBOOT;
 	req.servo_id = hw_id;
 	req.data.resize(0);
 }
 
-void herkulex_servo::HerkulexServo::reqWriteClearStatus(HerkulexPacket& req) const
+void HerkulexServo::reqWriteClearStatus(HerkulexPacket& req) const
 {
 	req.command = HerkulexPacket::REQ_RAM_WRITE;
 	req.servo_id = hw_id;
@@ -124,7 +127,7 @@ void herkulex_servo::HerkulexServo::reqWriteClearStatus(HerkulexPacket& req) con
 	req.data[3] = 0;
 }
 
-bool herkulex_servo::HerkulexServo::ackRead_impl(const HerkulexPacket& ack, unsigned int reg_num, unsigned int * data, Status& status) const 
+bool HerkulexServo::ackRead_impl(const HerkulexPacket& ack, unsigned int reg_num, unsigned int * data, Status& status) const 
 {
 	unsigned int index = 2;
 	while(index < ack.data.size() - 2)
@@ -149,7 +152,7 @@ bool herkulex_servo::HerkulexServo::ackRead_impl(const HerkulexPacket& ack, unsi
 	return true;
 }
 
-bool herkulex_servo::HerkulexServo::ackRead_ram(const HerkulexPacket& ack, const std::string& reg, unsigned int& val, Status& status) const 
+bool HerkulexServo::ackRead_ram(const HerkulexPacket& ack, const std::string& reg, unsigned int& val, Status& status) const 
 {
 	if (ack.servo_id != hw_id) return false;
 	if (ack.command != HerkulexPacket::ACK_RAM_READ) return false;
@@ -162,7 +165,7 @@ bool herkulex_servo::HerkulexServo::ackRead_ram(const HerkulexPacket& ack, const
 	return ackRead_impl(ack, r->reg_num, &val, status);
 }
 
-bool herkulex_servo::HerkulexServo::ackRead_eep(const HerkulexPacket& ack, const std::string& reg, unsigned int& val, Status& status) const 
+bool HerkulexServo::ackRead_eep(const HerkulexPacket& ack, const std::string& reg, unsigned int& val, Status& status) const 
 {
 	if (ack.servo_id != hw_id) return false;
 	if (ack.command != HerkulexPacket::ACK_EEP_READ) return false;
@@ -175,7 +178,7 @@ bool herkulex_servo::HerkulexServo::ackRead_eep(const HerkulexPacket& ack, const
 	return ackRead_impl(ack, r->reg_num, &val, status);
 }
 	
-bool herkulex_servo::HerkulexServo::ackStatReturn_impl(const HerkulexPacket& ack, Status& status) const 
+bool HerkulexServo::ackStatReturn_impl(const HerkulexPacket& ack, Status& status) const 
 {
 	if (ack.servo_id != hw_id) return false;
 	if (ack.data.size() != 2) return false;
@@ -184,14 +187,14 @@ bool herkulex_servo::HerkulexServo::ackStatReturn_impl(const HerkulexPacket& ack
 	return true;
 }
 
-void herkulex_servo::HerkulexServo::reqIJOGheader(HerkulexPacket& req) const
+void HerkulexServo::reqIJOGheader(HerkulexPacket& req) const
 {
 	req.servo_id = hw_id;
 	req.command = HerkulexPacket::REQ_I_JOG;
 	req.data.resize(0);
 }
 
-void herkulex_servo::HerkulexServo::insertIJOGdata(HerkulexPacket& req, JOGMode mode, unsigned int goal, unsigned int playtime) const
+void HerkulexServo::insertIJOGdata(HerkulexPacket& req, JOGMode mode, unsigned int goal, unsigned int playtime) const
 {
 	req.data.push_back(goal & 0xFF); // LSB goal
 	req.data.push_back((goal >> 8) & 0xFF); // LSB goal
@@ -200,7 +203,7 @@ void herkulex_servo::HerkulexServo::insertIJOGdata(HerkulexPacket& req, JOGMode 
 	req.data.push_back(playtime); //playtime
 }
 
-void herkulex_servo::HerkulexServo::reqSJOGheader(HerkulexPacket& req, unsigned int playtime) const
+void HerkulexServo::reqSJOGheader(HerkulexPacket& req, unsigned int playtime) const
 {
 	req.servo_id = hw_id;
 	req.command = HerkulexPacket::REQ_S_JOG;
@@ -208,10 +211,14 @@ void herkulex_servo::HerkulexServo::reqSJOGheader(HerkulexPacket& req, unsigned 
 	req.data[0] = playtime;
 }
 
-void herkulex_servo::HerkulexServo::insertSJOGdata(HerkulexPacket& req, JOGMode mode, unsigned int goal) const
+void HerkulexServo::insertSJOGdata(HerkulexPacket& req, JOGMode mode, unsigned int goal) const
 {
 	req.data.push_back(goal & 0xFF); // LSB goal
 	req.data.push_back((goal >> 8) & 0xFF); // LSB goal
 	req.data.push_back(mode); // mode
 	req.data.push_back(hw_id); // ID
 }
+
+} // namespace servo
+
+}// namespace herkulex

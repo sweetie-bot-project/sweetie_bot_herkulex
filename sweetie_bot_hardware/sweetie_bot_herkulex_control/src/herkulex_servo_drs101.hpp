@@ -3,7 +3,9 @@
 
 #include "herkulex_servo.hpp"
 
-namespace herkulex_servo {
+namespace herkulex {
+
+namespace servo {
 
 	class HerkulexServoDRS101 : public HerkulexServo
 	{
@@ -31,6 +33,8 @@ namespace herkulex_servo {
 			virtual bool ackState(const HerkulexPacket& ack, State& state, Status& status) const;
 	};
 
-};
+}
+
+}
 
 #endif  /*HERKULEX_SERVO_DRS101_HPP*/
