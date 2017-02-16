@@ -14,6 +14,7 @@ extern "C" {
 #include "herkulex_servo_drs101.hpp"
 
 using namespace RTT;
+using RTT::os::MutexLock;
 using namespace sweetie_bot;
 
 namespace herkulex
@@ -875,17 +876,19 @@ bool HerkulexArray::ackState(const HerkulexPacket& ack, const std::string& servo
 void HerkulexArray::receivePacketCM(const HerkulexPacket& pkt) 
 {
 	ack_buffer.Push(pkt);
-	ack_mutex.lock();
-	ack_cond.broadcast();
-	ack_mutex.unlock();
+	{
+		MutexLock lock(ack_mutex);
+		ack_cond.broadcast();
+	}
 }
 
 bool HerkulexArray::breakLoop() 
 {
-	ack_mutex.lock();
-	break_loop_flag = true;
-	ack_cond.broadcast();
-	ack_mutex.unlock();
+	{
+		MutexLock lock(ack_mutex);
+		break_loop_flag = true;
+		ack_cond.broadcast();
+	}
 	return true;
 }
 
@@ -912,9 +915,10 @@ bool HerkulexArray::sendRequest(const HerkulexPacket& req, servo::HerkulexServo:
 		sendPacket(req);
 		tryouts--;
 		do {
-			ack_mutex.lock();
-			while(ack_buffer.empty() && timeout_timer.isArmed(TIMEOUT_TIMER_ID) && !break_loop_flag ) ack_cond.wait(ack_mutex);
-			ack_mutex.unlock();
+			{
+				MutexLock lock(ack_mutex);
+				while(ack_buffer.empty() && timeout_timer.isArmed(TIMEOUT_TIMER_ID) && !break_loop_flag ) ack_cond.wait(ack_mutex);
+			}
 			if (!ack_buffer.empty()) {
 				pkt_ack = ack_buffer.PopWithoutRelease();
 				//TODO invalid packet flag check
