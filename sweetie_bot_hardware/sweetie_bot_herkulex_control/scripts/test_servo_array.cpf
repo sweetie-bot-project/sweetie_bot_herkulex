@@ -18,10 +18,30 @@
 			<value>0</value>
 		</simple>
 		<struct name="registers_init" type="PropertyBag">
-			<description>Values written to servo RAM register after reboot.</description>
+			<description>These values are written to RAM register of ALL servos after reboot. The servo-specific values override them.</description>
 			<simple name="torque_control" type="ulong">
 				<description>Servo opertional state: ON=96, BRAKE=64, FREE=0</description>
 				<value>96</value>
+			</simple>
+			<simple name="min_position" type="ulong">
+				<description>Minimal allowed absolute position.</description>
+				<value>21</value>
+			</simple>
+			<simple name="max_position" type="ulong">
+				<description>Maximal allowed absolute position.</description>
+				<value>1002</value>
+			</simple>
+			<simple name="position_kp" type="ulong">
+				<description>Proportional PID gain.</description>
+				<value>254</value>
+			</simple>
+			<simple name="position_kd" type="ulong">
+				<description>Differential PID gain.</description>
+				<value>6500</value>
+			</simple>
+			<simple name="position_ki" type="ulong">
+				<description>Integral PID gain.</description>
+				<value>0</value>
 			</simple>
 		</struct>
 	</struct>
@@ -40,7 +60,7 @@
 			<value>0</value>
 		</simple>
 		<struct name="registers_init" type="PropertyBag">
-			<description>Values written to servo RAM register after reboot.</description>
+			<description>Values written to the servo RAM register after reboot.</description>
 			<simple name="led_control" type="ulong">
 				<description>Led status.</description>
 				<value>1</value>

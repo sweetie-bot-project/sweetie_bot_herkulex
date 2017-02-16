@@ -9,11 +9,13 @@
 import("rtt_ros");
 ros.import("rtt_rospack");
 
-var string HERKULEX_SCRIPTS = ros.find("sweetie_bot_hardware_herkulex") + "/scripts/"
-var string LOGGER_SCRIPTS = ros.find("sweetie_bot_logger") + "/scripts/"
+var string HERKULEX_SCRIPTS = ros.find("sweetie_bot_herkulex_control") + "/scripts/"
 
 # LOAD LOGGER
-runScript(LOGGER_SCRIPTS + "logger_conf.ops");
+ros.import("sweetie_bot_logger");
+
+loadService("Deployer", "log4cpp"); # add log4cpp service
+log4cpp.configure(HERKULEX_SCRIPTS + "herkulex_control.log4cpp"); # load configuration from file
 
 # LOAD HERKULEX_* SUBSYSTEM
 

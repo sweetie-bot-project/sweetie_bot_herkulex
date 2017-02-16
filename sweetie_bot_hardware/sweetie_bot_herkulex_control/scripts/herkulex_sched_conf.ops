@@ -2,23 +2,21 @@
 
 import("rtt_ros");
 ros.import("rtt_rospack");
-ros.import("rtt_sensor_msgs");
-
-import("sweetie_bot_hardware_herkulex_msgs_rtt");
-import("sweetie_bot_hardware_herkulex");
+ros.import("sweetie_bot_herkulex_control");
 
 # LOAD HERKULEX_* COMPONENTS
 
-loadComponent("herk_array","sweetie_bot::HerkulexArray");
+loadComponent("herk_array","herkulex::HerkulexArray");
 loadService("herk_array", "marshalling");
-herk_array.marshalling.loadProperties(ros.find("sweetie_bot_hardware_herkulex") + "/scripts/test_servos.cpf");
+herk_array.marshalling.loadProperties(ros.find("sweetie_bot_herkulex_control") + "/scripts/test_servo_array.cpf");
 
-loadComponent("herk_driver","sweetie_bot::HerkulexDriver");
+loadComponent("herk_driver","herkulex::HerkulexDriver");
 herk_driver.port_name = "/dev/ttyUSB0";
 herk_driver.baudrate = 115200;
 
-loadComponent("herk_sched","sweetie_bot::HerkulexSched");
+loadComponent("herk_sched","herkulex::HerkulexSched");
 herk_sched.poll_list = strings("servo1", "servo2");
+# herk_sched.poll_round_size = 1;
 herk_sched.detailed_state = 1; 
 
 # CONNECT OPERATIONS OF HERKULEX_* subsystem
@@ -63,9 +61,9 @@ herk_timer.startTimer(1, TIMER_PERIOD);
 
 # START HERKULEX_* SUBSYSTEM (without scheduler)
 
-herk_driver.configure
+herk_driver.configure;
 # Driver must be active when arraty is configurated.
-herk_driver.start 
+herk_driver.start;
 
-herk_sched.configure
-herk_array.configure
+herk_sched.configure;
+herk_array.configure;
