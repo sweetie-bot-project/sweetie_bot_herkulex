@@ -122,7 +122,7 @@ bool HerkulexDriver::configureHook()
 		return false;
 	}
 	activity->watch(port_fd);
-
+	
 	// reserve memory
 	recv_pkt.data.reserve(HerkulexPacket::DATA_SIZE);
 	log(INFO) << "HerkulexDriver is configured!" << endlog(); 
