@@ -7,5 +7,5 @@ log4j.category.org.orocos.rtt=INFO
 log4j.additivity.org.orocos.rtt=false   # do not also log to parent categories
 
 # setup log level for different categories
-log4j.category.sweetie.motion=INFO
-log4j.category.sweetie.motion.herkulex=INFO
+log4j.category.sweetie_bot.motion=INFO
+log4j.category.sweetie_bot.motion.herkulex=INFO

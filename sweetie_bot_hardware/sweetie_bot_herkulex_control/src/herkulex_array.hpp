@@ -53,9 +53,9 @@ class HerkulexArray : public RTT::TaskContext
 	protected:
 		// logger
 #ifdef SWEETIEBOT_LOGGER
-		sweetie_bot::SWEETIEBOT_LOGGER log;
+		sweetie_bot::logger::SWEETIEBOT_LOGGER log;
 #else
-		sweetie_bot::LoggerRTT log;
+		sweetie_bot::logger::LoggerRTT log;
 #endif
 		// cached servo configuration
 		servo::HerkulexServoArray servos; /**< Servo sructures */

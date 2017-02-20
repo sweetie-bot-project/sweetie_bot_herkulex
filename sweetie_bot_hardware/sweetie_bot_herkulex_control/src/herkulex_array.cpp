@@ -44,7 +44,7 @@ HerkulexArray::HerkulexArray(std::string const& name) :
 	ack_buffer(10, HerkulexPacket(), true), // circular buffer for 10 packets
 	timeout_timer(this),
 	break_loop_flag(false),
-	log("sweetie.motion.herkulex.array")
+	log(logger::getDefaultCategory("sweetie_bot.motion") + ".herkulex." + name)
 {
 	if (!log.ready()) {
 		RTT::Logger::In in("HerkulexArray");

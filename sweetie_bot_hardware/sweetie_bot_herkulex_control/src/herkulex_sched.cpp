@@ -28,7 +28,7 @@ HerkulexSched::HerkulexSched(std::string const& name) :
 	cm_req_buffer(10, HerkulexPacket(), true),
 	ack_buffer(10, HerkulexPacket(), true),
 	timer(this),
-	log("sweetie.motion.herkulex.sched")
+	log(logger::getDefaultCategory("sweetie_bot.motion") + ".herkulex." + name)
 {
 	if (!log.ready()) {
 		RTT::Logger::In in("HerkulexSched");
