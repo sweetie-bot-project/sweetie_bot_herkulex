@@ -1,7 +1,6 @@
 #include "herkulex_sched.hpp"
 
 #include <rtt/Component.hpp>
-#include <rtt/Logger.hpp>
 
 
 using namespace sweetie_bot;
@@ -9,7 +8,7 @@ using namespace RTT;
 
 namespace herkulex {
 
-//TODO Where should be this code?
+//Convinence macro fo logging.
 std::ostream& resetfmt(std::ostream& s) {
 	s.copyfmt(std::ios(NULL)); 
 	return s;

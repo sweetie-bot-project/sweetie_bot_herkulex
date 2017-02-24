@@ -32,6 +32,11 @@ std::ostream& operator<<(std::ostream& s, const sweetie_bot_herkulex_msgs::Herku
 	return s;
 }
 
+//Convinence macro fo logging.
+std::ostream& resetfmt(std::ostream& s) {
+	s.copyfmt(std::ios(NULL)); 
+	return s;
+}
 
 const unsigned long HerkulexArray::READ_ERROR = 0x10000;
 const unsigned int HerkulexArray::JOG_STOP = herkulex::servo::JOGMode::STOP;

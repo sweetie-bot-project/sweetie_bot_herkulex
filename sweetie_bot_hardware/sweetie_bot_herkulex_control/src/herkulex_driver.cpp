@@ -23,6 +23,12 @@ using namespace RTT;
 namespace herkulex
 {
 
+//Convinence macro fo logging.
+std::ostream& resetfmt(std::ostream& s) {
+	s.copyfmt(std::ios(NULL)); 
+	return s;
+}
+
 HerkulexDriver::HerkulexDriver(std::string const& name) : 
 	TaskContext(name, PreOperational),
 	receivePacketDL("receivePacket"),
