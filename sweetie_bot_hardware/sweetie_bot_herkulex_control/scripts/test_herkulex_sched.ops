@@ -14,7 +14,8 @@ var string HERKULEX_SCRIPTS = ros.find("sweetie_bot_herkulex_control") + "/scrip
 # LOAD LOGGER
 ros.import("sweetie_bot_logger");
 
-loadService("Deployer", "log4cpp"); # add log4cpp service
+require("log4cpp"); # add log4cpp service
+log4cpp.default_root_category = "sweetie_bot.motion";
 log4cpp.configure(HERKULEX_SCRIPTS + "herkulex_control.log4cpp"); # load configuration from file
 
 # LOAD HERKULEX_* SUBSYSTEM

@@ -33,7 +33,7 @@ HerkulexDriver::HerkulexDriver(std::string const& name) :
 	TaskContext(name, PreOperational),
 	receivePacketDL("receivePacket"),
 	port_fd(-1),
-	log(logger::getDefaultCategory("sweetie_bot.motion") + ".herkulex." + name)
+	log(logger::categoryFromComponentName(name))
 {
 	if (!log.ready()) {
 		RTT::Logger::In in("HerkulexDriver");
