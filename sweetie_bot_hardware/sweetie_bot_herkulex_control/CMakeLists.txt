@@ -47,4 +47,4 @@ orocos_generate_package()
 
 # Scripts installation
 install(DIRECTORY scripts
-	DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/scripts)
+	DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
