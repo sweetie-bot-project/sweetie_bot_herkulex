@@ -10,9 +10,9 @@ const unsigned int  HerkulexServoDRS101::POS_RAW_MAX = 1023;
 
 const double HerkulexServoDRS101::POS_CONV_COEFF_RAW2RAD = 0.325*M_PI/180.0;
 
-const double HerkulexServoDRS101::VEL_CONV_COEFF_RAW2RADS = 29.9*M_PI/180.0;
+const double HerkulexServoDRS101::VEL_CONV_COEFF_RAW2RADS = 29.09*M_PI/180.0;
 
-const double HerkulexServoDRS101::TIME_CONV_COEFF_RAW2SEC = 0.0115;
+const double HerkulexServoDRS101::TIME_CONV_COEFF_RAW2SEC = 0.0112;
 
 const std::vector<Register> HerkulexServoDRS101::registers_drs101 =
 {
