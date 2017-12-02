@@ -6,7 +6,7 @@
 
 #include <sweetie_bot_logger/logger.hpp>
 
-#include "orocos/sweetie_bot_herkulex_msgs/typekit/HerkulexPacket.h"
+#include <sweetie_bot_herkulex_msgs/typekit/HerkulexPacket.h>
 
 namespace herkulex
 {

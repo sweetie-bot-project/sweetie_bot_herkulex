@@ -2,7 +2,7 @@
   <name>sweetie_bot_herkulex_control</name>
   <version>1.0.0</version>
   <description>Herkulex Servo driver for SweetieBot robot.</description>
-  <maintainer email="goncharov_oi@yandex.ru">disRecord</maintainer>
+  <maintainer email="goncharovoi@yandex.ru">disRecord</maintainer>
 
   <license>BSD</license>
 
@@ -11,12 +11,17 @@
 
   <author>disRecord</author>
 
+  <!-- ROS and OROCOS packages -->
   <depend>rtt</depend>
-  <depend>sweetie_bot_logger</depend>
-  <depend>sweetie_bot_herkulex_msgs</depend>
-  <depend>sweetie_bot_herkulex_msgs_rtt</depend>
+  <depend>rtt_ros</depend>
+  <!-- ROS and OROCOS datatypes -->
   <depend>sensor_msgs</depend>
   <depend>rtt_sensor_msgs</depend>
+  <!-- SWEETIEBOT packages -->
+  <depend>sweetie_bot_logger</depend>
+  <!-- SWEETIEBOT datatypes -->
+  <depend>sweetie_bot_herkulex_msgs</depend>
+  <depend>sweetie_bot_herkulex_msgs_rtt</depend>
 
   <export>
 	  <rtt_ros>

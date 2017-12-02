@@ -10,41 +10,43 @@ cmake_minimum_required(VERSION 2.6.3)
 #
 project(sweetie_bot_herkulex_control)
 
+### c++11 support ###
 set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} -std=c++11)
 
+### SweetieBot Logger configuration ###
 set(LOGGER_DEFAULT "" CACHE STRING "Default logger for all packages (LoggerOCL, LoggerLog4Cpp, LoggerRosout, LoggerRTT).")
 set(LOGGER_HERKULEX "" CACHE STRING "Logger for herkulex package (LoggerOCL, LoggerLog4Cpp, LoggerRosout, LoggerRTT).")
 
-if (LOGGER_SERVO_INV)
-	add_definitions(-DSWEETIEBOT_LOGGER=${LOGGER_SERVO_INV})
+if (LOGGER_HERKULEX)
+	add_definitions(-DSWEETIEBOT_LOGGER=${LOGGER_HERKULEX})
 elseif(LOGGER_DEFAULT)
 	add_definitions(-DSWEETIEBOT_LOGGER=${LOGGER_DEFAULT})
 else()
 	add_definitions(-DSWEETIEBOT_LOGGER=LoggerRTT)
 endif()
 
-# Use 'source orocos_toolchain/env.sh' if the command below fails:
-find_package(OROCOS-RTT QUIET)
-if (NOT OROCOS-RTT_FOUND)
-  message (FATAL_ERROR "\nCould not find Orocos. Please use the shell command\n 'source orocos_toolchain/env.sh' and then run cmake again.")
-endif()
 
-find_package(catkin REQUIRED COMPONENTS sweetie_bot_logger)
-include_directories(include ${catkin_INCLUDE_DIRS})
+### ROS Dependencies ###
+# Find the RTT-ROS package (this transitively includes the Orocos CMake macros)
+find_package(catkin REQUIRED COMPONENTS rtt_ros)
+include_directories(${catkin_INCLUDE_DIRS})
 
-# Defines the orocos_* cmake macros. See that file for additional
-# documentation.
-include( ${OROCOS-RTT_USE_FILE_PATH}/UseOROCOS-RTT.cmake )
+### Orocos Dependencies ###
+# Note that orocos_use_package() does not need to be called for any dependency
+# listed in the package.xml file
+include_directories(${USE_OROCOS_INCLUDE_DIRS})
 
-# Rest of the configuration is in src/
+### Orocos Targets ###
+
+# Include src/ directory.
 add_subdirectory( src )
 
-#
-# Generates and installs our package. Must be the last statement such
-# that it can pick up all above settings.
-#
-orocos_generate_package()
+### Orocos Package Exports and Install Targets ###
 
 # Scripts installation
 install(DIRECTORY scripts
 	DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
+
+# Export package information (replaces catkin_package() macro) 
+orocos_generate_package(DEPENDS rtt_ros)
+

@@ -11,10 +11,10 @@
 
 #include <sweetie_bot_logger/logger.hpp>
 
-#include <orocos/sensor_msgs/typekit/JointState.h>
-#include <orocos/sweetie_bot_herkulex_msgs/typekit/HerkulexPacket.h>
-#include <orocos/sweetie_bot_herkulex_msgs/typekit/HerkulexServoState.h>
-#include <orocos/sweetie_bot_herkulex_msgs/typekit/ServoGoal.h>
+#include <sensor_msgs/typekit/JointState.h>
+#include <sweetie_bot_herkulex_msgs/typekit/HerkulexPacket.h>
+#include <sweetie_bot_herkulex_msgs/typekit/HerkulexServoState.h>
+#include <sweetie_bot_herkulex_msgs/typekit/ServoGoal.h>
 
 #include "herkulex_servo.hpp"
 #include "herkulex_servo_drs101.hpp"
