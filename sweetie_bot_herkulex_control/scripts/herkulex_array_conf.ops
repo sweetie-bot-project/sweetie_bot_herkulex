@@ -4,8 +4,8 @@ import("rtt_ros");
 ros.import("rtt_rospack");
 ros.import("rtt_sensor_msgs");
 
-import("sweetie_bot_herkulex_msgs_rtt");
-import("sweetie_bot_herkulex_control");
+ros.import("sweetie_bot_herkulex_msgs_rtt");
+ros.import("sweetie_bot_herkulex_control");
 
 # LOAD HERKULEX_* COMPONENTS
 
@@ -25,8 +25,8 @@ connectOperations("herk_driver.receivePacket", "herk_array.receivePacketCM");
 
 # START HERKULEX_* SUBSYSTEM (without scheduler)
 
-herk_driver.configure
+herk_driver.configure();
 # Driver must be active when array is configurated.
-herk_driver.start 
+herk_driver.start();
 
-herk_array.configure
+herk_array.configure();
