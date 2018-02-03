@@ -88,11 +88,13 @@ HerkulexServoDRS101::HerkulexServoDRS101(const std::string& _name, unsigned int 
 
 double HerkulexServoDRS101::convertVelRawToRad(unsigned int raw) const 
 {
-	return VEL_CONV_COEFF_RAW2RADS * (int16_t) raw;
+	double vel = VEL_CONV_COEFF_RAW2RADS * (int16_t) raw;
+	return reverse ? -vel : vel;
 };
 
 unsigned int HerkulexServoDRS101::convertVelRadToRaw(double vel) const
 {
+	vel = reverse ? -vel : vel;
 	return vel / VEL_CONV_COEFF_RAW2RADS;
 };
 
