@@ -16,9 +16,9 @@ std::ostream& resetfmt(std::ostream& s) {
 
 HerkulexSched::HerkulexSched(std::string const& name) : 
 	TaskContext(name, PreOperational),
-	receivePacketCM("receivePacketCM"),
-	sendPacketDL("sendPacketDL"),
-	waitSendPacketDL("waitSendPacketDL"),
+	receivePacketCM("receivePacketCM", this->engine()),
+	sendPacketDL("sendPacketDL", this->engine()),
+	waitSendPacketDL("waitSendPacketDL", this->engine()),
 	reqIJOG("reqIJOG"),
 	reqPosVel("reqPosVel"),
 	ackPosVel("ackPosVel"),
@@ -230,11 +230,12 @@ void HerkulexSched::updateHook()
 				}
 				else {
 					reqIJOG(req_pkt, goals);
-					sendPacketDL(req_pkt);
+					// use send mode becuase of #1 bug
+					sendPacketDL_handle = sendPacketDL.send(req_pkt);
 
 					if (log(DEBUG)) {
-						log() << "Start RT round." << endlog();
-						log() << DEBUG << std::hex << std::setw(2) << std::setfill('0');
+						log() << "Start RT round." << std::endl;
+						log() << std::hex << std::setw(2) << std::setfill('0');
 						log() << "REQ packet: servo_id: "  << (int) req_pkt.servo_id << " cmd: " << (int) req_pkt.command << " data(" << req_pkt.data.size() << "): ";
 						for(auto c = req_pkt.data.begin(); c != req_pkt.data.end(); c++) log() << (int) *c << " ";
 						log() << resetfmt << endlog();
@@ -284,6 +285,12 @@ void HerkulexSched::updateHook()
 				statistics.rt_read_start_time = time_service->secondsSince(statistics_sync_timestamp);
 #endif /* SCHED_STATISTICS */
 
+			//check sendPacketDL operation result: possible deadlock detection
+			{
+				SendStatus result = sendPacketDL_handle.collectIfDone();
+				if (result != SendSuccess) log(WARN) << "sendPacketDL() operation failed (JOG). SendStatus: " << result << endlog();
+			}
+
 		case SEND_READ_REQ:
 
 			if (poll_index >= poll_end_index || !timer.isArmed(ROUND_TIMER)) {
@@ -322,9 +329,11 @@ void HerkulexSched::updateHook()
 			}
 		
 			timer.arm(REQUEST_TIMEOUT_TIMER, this->timeout);
-			sendPacketDL(req_pkt);
+			// use send mode due to lock bug
+			sendPacketDL_handle = sendPacketDL.send(req_pkt);
+
 			if (log(DEBUG)) {
-				log() << DEBUG << std::hex << std::setw(2) << std::setfill('0');
+				log() << std::hex << std::setw(2) << std::setfill('0');
 				log() << "REQ packet: servo_id: "  << (int) req_pkt.servo_id << " cmd: " << (int) req_pkt.command << " data(" << req_pkt.data.size() << "): ";
 				for(auto c = req_pkt.data.begin(); c != req_pkt.data.end(); c++) log() << (int) *c << " ";
 				log() << resetfmt << endlog();
@@ -334,6 +343,7 @@ void HerkulexSched::updateHook()
 			break;
 			
 		case RECEIVE_READ_ACK:
+
 			if (!timer.isArmed(REQUEST_TIMEOUT_TIMER)) {
 				poll_index++;
 				sched_state = SEND_READ_REQ;
@@ -341,6 +351,12 @@ void HerkulexSched::updateHook()
 				statistics.rt_read_n_errors++;
 #endif /* SCHED_STATISTICS */
 				log(DEBUG) << "ACK timeout" << endlog();
+
+				// check sendPacketDL result: possible deadlock detection
+				{
+					SendStatus result = sendPacketDL_handle.collectIfDone();
+					if (result != SendSuccess) log(WARN) << "sendPacketDL() operation failed (ACK timeout). SendStatus: " << result << " poll_index: " << poll_index-1 << endlog();
+				}
 
 				this->trigger();
 				break;
@@ -384,6 +400,13 @@ void HerkulexSched::updateHook()
 					}
 					statistics.rt_read_n_successes++;
 #endif /* SCHED_STATISTICS */
+
+					// check sendPacketDL result: possible deadlock detection
+					{
+						SendStatus result = sendPacketDL_handle.collectIfDone();
+						if (result != SendSuccess) log(WARN) << "sendPacketDL() operation failed (ACK received). SendStatus: " << result << endlog();
+					}
+
 					timer.killTimer(REQUEST_TIMEOUT_TIMER);
 					poll_index++;
 					sched_state = SEND_READ_REQ;
