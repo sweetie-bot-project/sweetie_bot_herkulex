@@ -8,6 +8,8 @@ extern "C" {
 #include <string.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <linux/serial.h>
+#include <sys/ioctl.h>
 }
 
 #include <vector>
@@ -120,6 +122,17 @@ bool HerkulexDriver::configureHook()
 	if (tcsetattr (this->port_fd, TCSANOW, &tty) != 0) {
 		log(ERROR) << "tcsetattr() failed: " << strerror(errno) << endlog(); 
 		return false;
+	}
+	// set low_latency flag
+	struct serial_struct serial;
+	if (ioctl(this->port_fd, TIOCGSERIAL, &serial) == -1) {
+		log(WARN) << "Unable to get serial_struct. ioctl() failed: " << strerror(errno) << endlog();
+	}
+	else {
+		serial.flags |= ASYNC_LOW_LATENCY;
+		if (ioctl(this->port_fd, TIOCSSERIAL, &serial) == -1) {
+			log(WARN) << "Unable to set low_latency flag. ioctl() failed: " << strerror(errno) << endlog();
+		}
 	}
 	// Setup FileDescriptorActivity
 	extras::FileDescriptorActivity * activity = dynamic_cast<extras::FileDescriptorActivity *>(this->getActivity());
