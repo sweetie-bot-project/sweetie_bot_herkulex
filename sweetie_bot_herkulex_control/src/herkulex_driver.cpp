@@ -44,11 +44,11 @@ HerkulexDriver::HerkulexDriver(std::string const& name) :
 		return;
 	}
 
-	this->addOperation("sendPacket", &HerkulexDriver::sendPacketDL, this, OwnThread) 
+	this->addOperation("sendPacket", &HerkulexDriver::sendPacketDL, this, ClientThread) 
 		.doc("Send packet to servos.") 
 		.arg("pkt", "HerkulexPacket to send.");
 
-	this->addOperation("waitSendPacket", &HerkulexDriver::waitSendPacketDL, this, OwnThread) 
+	this->addOperation("waitSendPacket", &HerkulexDriver::waitSendPacketDL, this, ClientThread) 
 		.doc("Wait until last send packet is actually writen to serial port.");
 
 	this->requires()->addOperationCaller(receivePacketDL);
@@ -344,7 +344,7 @@ void HerkulexDriver::sendPacketDL(const HerkulexPacket& pkt)
 
 	//TODO make this optional
 	// reset receiver in case future reply
-	recv_state = HEADER1;
+	// recv_state = HEADER1;
 
 	if (log(DEBUG)) {
 		log() << "WRITE on serial port (" << pkt_size << " bytes):" << std::hex << std::setw(2) << std::setfill('0');

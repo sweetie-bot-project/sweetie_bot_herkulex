@@ -102,7 +102,6 @@ class HerkulexSched : public RTT::TaskContext
 		void receivePacketDL(const HerkulexPacket& pkt);
 		// Operations: required
 		RTT::OperationCaller<void(const HerkulexPacket& pkt)> sendPacketDL;
-		RTT::SendHandle<void(const HerkulexPacket& pkt)> sendPacketDL_handle;
 		RTT::OperationCaller<void()> waitSendPacketDL;
 		// OPERATIONS: CONFIGURATION AND MONITORING INTERFACE
 		// Operations: provided
