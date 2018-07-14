@@ -4,7 +4,7 @@ import("rtt_ros");
 ros.import("rtt_rospack");
 ros.import("rtt_sensor_msgs");
 
-ros.import("sweetie_bot_herkulex_msgs_rtt");
+ros.import("rtt_sweetie_bot_herkulex_msgs");
 ros.import("sweetie_bot_herkulex_control");
 
 # LOAD HERKULEX_* COMPONENTS

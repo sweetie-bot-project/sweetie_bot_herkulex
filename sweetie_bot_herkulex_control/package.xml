@@ -22,13 +22,13 @@
   <depend>sweetie_bot_logger</depend>
   <!-- SWEETIEBOT datatypes -->
   <depend>sweetie_bot_herkulex_msgs</depend>
-  <depend>sweetie_bot_herkulex_msgs_rtt</depend>
+  <depend>rtt_sweetie_bot_herkulex_msgs</depend>
 
   <export>
 	  <rtt_ros>
 		  <!-- Plugin deps are loaded automatically by the rtt_ros import service -->
 		  <plugin_depend>rtt_sensor_msgs</plugin_depend>
-		  <plugin_depend>sweetie_bot_herkulex_msgs_rtt</plugin_depend>
+		  <plugin_depend>rtt_sweetie_bot_herkulex_msgs</plugin_depend>
 	  </rtt_ros>
   </export>
 </package>
