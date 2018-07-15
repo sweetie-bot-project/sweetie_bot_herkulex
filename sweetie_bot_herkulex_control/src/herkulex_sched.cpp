@@ -235,7 +235,7 @@ void HerkulexSched::updateHook()
 
 					if (log(DEBUG)) {
 						log() << "Start RT round." << std::endl;
-						log() << std::hex << std::setw(2) << std::setfill('0');
+						log() << std::dec << std::setw(2) << std::setfill('0');
 						log() << "REQ packet: servo_id: "  << (int) req_pkt.servo_id << " cmd: " << (int) req_pkt.command << " data(" << req_pkt.data.size() << "): ";
 						for(auto c = req_pkt.data.begin(); c != req_pkt.data.end(); c++) log() << (int) *c << " ";
 						log() << resetfmt << endlog();
@@ -333,7 +333,7 @@ void HerkulexSched::updateHook()
 			sendPacketDL_handle = sendPacketDL.send(req_pkt);
 
 			if (log(DEBUG)) {
-				log() << std::hex << std::setw(2) << std::setfill('0');
+				log() << std::dec << std::setw(2) << std::setfill('0');
 				log() << "REQ packet: servo_id: "  << (int) req_pkt.servo_id << " cmd: " << (int) req_pkt.command << " data(" << req_pkt.data.size() << "): ";
 				for(auto c = req_pkt.data.begin(); c != req_pkt.data.end(); c++) log() << (int) *c << " ";
 				log() << resetfmt << endlog();
@@ -375,7 +375,7 @@ void HerkulexSched::updateHook()
 					vel = states.vel.back();
 				}
 				if (success && log(DEBUG)) {
-					log() << std::hex << std::setw(2) << std::setfill('0');
+					log() << std::dec << std::setw(2) << std::setfill('0');
 					log() << "ACK packet: servo_id: " << (int) ack_pkt->servo_id << " cmd: " << (int) ack_pkt->command << " data(" << ack_pkt->data.size() << "): ";
 					for(auto c = ack_pkt->data.begin(); c != ack_pkt->data.end(); c++) log() << (int) *c << " ";
 					log() << resetfmt << std::endl << "pos = " << pos << " vel = " << vel << endlog();

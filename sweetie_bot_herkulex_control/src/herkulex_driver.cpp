@@ -191,7 +191,7 @@ void HerkulexDriver::updateHook()
 		buffer_index = 0;
 
 		if (log(DEBUG)) {
-			log() << "READ on serial port (" << buffer_size << " bytes):" << std::hex << std::setw(2) << std::setfill('0');
+			log() << "READ on serial port (" << buffer_size << " bytes):" << std::dec << std::setw(2) << std::setfill('0');
 			for (int i = 0; i < buffer_size; i++) log(DEBUG) << (unsigned int) buffer[i] << " ";
 			log() << resetfmt << std::endl << "STATE = " << recv_state << endlog();
 		}
@@ -202,7 +202,7 @@ void HerkulexDriver::updateHook()
 
 			/*if (log().getLogLevel() >= Logger::DEBUG) {
 				Logger::In in("HerkulexDriver");
-				log(DEBUG) << "c = " << std::hex << (unsigned int) c << std::dec << " state = " << recv_state << endlog();
+				log(DEBUG) << "c = " << std::dec << (unsigned int) c << std::dec << " state = " << recv_state << endlog();
 			}*/
 
 			switch (recv_state) {
@@ -244,7 +244,7 @@ void HerkulexDriver::updateHook()
 							break;
 						default:
 							{
-								log(WARN) << "ACK packet type is unknown, servo = " << std::hex << (unsigned int) recv_pkt.servo_id << " cmd = " << (unsigned int) recv_pkt.command << std::dec << endlog();
+								log(WARN) << "ACK packet type is unknown, servo = " << std::dec << (unsigned int) recv_pkt.servo_id << " cmd = " << (unsigned int) recv_pkt.command << std::dec << endlog();
 							}
 							recv_state = HEADER1;
 							break;
@@ -259,7 +259,7 @@ void HerkulexDriver::updateHook()
 				case CHECKSUM2:
 					if ( c != (~recv_pkt_checksum1 & 0xFE) ) {
 						{
-							log(WARN) << "ACK packet, checksum2 error, servo = " << std::hex << (unsigned int) recv_pkt.servo_id << " cmd = " << (unsigned int) recv_pkt.command << std::dec << endlog();
+							log(WARN) << "ACK packet, checksum2 error, servo = " << std::dec << (unsigned int) recv_pkt.servo_id << " cmd = " << (unsigned int) recv_pkt.command << std::dec << endlog();
 						}
 						recv_state = HEADER1;
 						break;
@@ -290,7 +290,7 @@ void HerkulexDriver::updateHook()
 							}
 						}
 						else {
-							log(WARN) << "ACK packet checksum1 error, servo = " << std::hex << (unsigned int) recv_pkt.servo_id << " cmd = " << (unsigned int) recv_pkt.command << std::dec << endlog();
+							log(WARN) << "ACK packet checksum1 error, servo = " << std::dec << (unsigned int) recv_pkt.servo_id << " cmd = " << (unsigned int) recv_pkt.command << std::dec << endlog();
 						}
 						recv_state = HEADER1;
 					}
@@ -347,7 +347,7 @@ void HerkulexDriver::sendPacketDL(const HerkulexPacket& pkt)
 	recv_state = HEADER1;
 
 	if (log(DEBUG)) {
-		log() << "WRITE on serial port (" << pkt_size << " bytes):" << std::hex << std::setw(2) << std::setfill('0');
+		log() << "WRITE on serial port (" << pkt_size << " bytes):" << std::dec << std::setw(2) << std::setfill('0');
 		for (int i = 0; i < pkt_size; i++) log(DEBUG) << (unsigned int) buffer[i] << " ";
 		log() << resetfmt << endlog();
 	}

@@ -23,8 +23,8 @@ namespace herkulex
 std::ostream& operator<<(std::ostream& s, const sweetie_bot_herkulex_msgs::HerkulexPacket& pkt) 
 {
 	std::ios::fmtflags fmt_flags( s.flags() );
-	s << std::hex << std::setw(2) << std::setfill('0');
-	s << "ACK packet: servo_id: " << (int) pkt.servo_id << " cmd: " << (int) pkt.command << " data(" << std::dec << pkt.data.size() << std::hex << "): ";
+	s << std::dec << std::setw(2) << std::setfill('0');
+	s << "ACK packet: servo_id: " << (int) pkt.servo_id << " cmd: " << (int) pkt.command << " data(" << std::dec << pkt.data.size() << std::dec << "): ";
 	for(auto c = pkt.data.begin(); c != pkt.data.end(); c++) log() << (int) *c << " ";
 	s << std::endl;
 	s.flags( fmt_flags );
@@ -253,7 +253,7 @@ bool HerkulexArray::configureHook()
 			return false;
 		}*/
 		std::shared_ptr<servo::HerkulexServo> servo(new servo::HerkulexServoDRS101(servo_name, servo_id_prop.rvalue(), reverse_prop.rvalue(), offset_prop.rvalue()));
-		log(DEBUG) << "Add servo name = " << servo->getName() << " servo_id = " << servo->getID() << endlog();
+		log(INFO) << "Add servo name = " << servo->getName() << " servo_id = " << servo->getID() << " offset = " << offset_prop.rvalue() << endlog();
 		if (!addServo(servo)) {
 			log(ERROR) << "Incorrect servos structure: dublicate servo name or servo_id." << endlog();
 			return false;
@@ -274,7 +274,7 @@ bool HerkulexArray::configureHook()
 					log(WARN) << "Servos structure: registers_init contains dublicate properties: " << servo_name << "." << reg_val_prop.getName() << endlog();
 				}
 				reg_init->insert(servo::RegisterValues::value_type(reg_val_prop.getName(), reg_val_prop.rvalue()));
-				log(DEBUG) << "Cachce reg = " << reg_val_prop.getName() << " val = " << std::hex << std::setw(2) << std::setfill('0') << reg_val_prop.rvalue() << resetfmt << endlog();
+				log(DEBUG) << "Cachce reg = " << reg_val_prop.getName() << " val = " << std::dec << std::setw(2) << std::setfill('0') << reg_val_prop.rvalue() << resetfmt << endlog();
 			}
 		}
 
@@ -561,7 +561,7 @@ bool HerkulexArray::resetAllServos()
 			s->reqStat(req_pkt);
 			if (sendRequest(req_pkt, s->ackCallbackStat(status))) {
 				if (status.error & servo::Status::ERROR_MASK) {
-					log(WARN) << s->getName() << " ID = " << std::hex << s->getID() << std::dec << statusToString(status) << endlog();
+					log(WARN) << s->getName() << " ID = " << std::dec << s->getID() << std::dec << statusToString(status) << endlog();
 				}
 				//TODO invalid packet check
 			}
@@ -689,11 +689,11 @@ void HerkulexArray::printServoStatus(const std::string& servo)
 		s.reqStat(req_pkt);
 		bool success = sendRequest(req_pkt, s.ackCallbackStat(status));
 		if (success) {
-			std::cout << servo << " ID = " << std::hex << s.getID() << std::dec << " \t" << statusToString(status) << std::endl;
+			std::cout << servo << " ID = " << std::dec << s.getID() << std::dec << " \t" << statusToString(status) << std::endl;
 		}
 		else {
 			log(ERROR) << "Unable query status of " << servo << " servo." << endlog();
-			std::cout << servo << " ID = " << std::hex << s.getID() << std::dec << " QUERY ERROR" << std::endl;
+			std::cout << servo << " ID = " << std::dec << s.getID() << std::dec << " QUERY ERROR" << std::endl;
 		}
 	}
 	catch (const std::out_of_range& e) {
@@ -718,12 +718,12 @@ void HerkulexArray::printErrorServoStatuses()
 		bool success = sendRequest(req_pkt, s.ackCallbackStat(status));
 		if (success) {
 			if (status.error & servo::Status::ERROR_MASK) {
-				std::cout << s.getName() << " ID = " << std::hex << s.getID() << std::dec << statusToString(status) << std::endl;
+				std::cout << s.getName() << " ID = " << std::dec << s.getID() << " " << std::dec << statusToString(status) << std::endl;
 			}
 		}
 		else {
 			log(ERROR) << "Unable query status of " << s.getName() << " servo." << endlog();
-			std::cout << s.getName() << " ID = " << std::hex << s.getID() << std::dec << " QUERY ERROR" << std::endl;
+			std::cout << s.getName() << " ID = " << std::dec << s.getID() << std::dec << " QUERY ERROR" << std::endl;
 		}
 	}
 }
@@ -733,7 +733,7 @@ void HerkulexArray::printRegisterRAM(const std::string& servo, const std::string
 	try {
 		const servo::HerkulexServo& s = getServo(servo);
 		unsigned long result = getRegisterRAM(servo, reg);
-		std::cout << s.getName() << " ID = " << std::hex << s.getID();
+		std::cout << s.getName() << " ID = " << std::dec << s.getID() << std::endl;
 		if (result != READ_ERROR) {
 			std::cout << reg << " = " << result << std::dec << std::endl;
 		}
@@ -766,7 +766,7 @@ void HerkulexArray::discoverServos()
 
 		// add servo to array
 		if (!addServo(servo)) {
-			std::cout << std::hex << "SERVO WITH ID = " <<  id << " IS FOUND." << std::endl;
+			std::cout << "SERVO WITH ID = " << std::dec << id << " IS FOUND." << std::endl;
 			std::cout << "But servo with name '"  << servo->getID() << "' is already presents in array. Skipping." << std::endl << std::endl;
 			continue;
 		}
@@ -781,13 +781,13 @@ void HerkulexArray::discoverServos()
 			&& (version[1] = getRegisterEEP(servo->getName(), "version2")) != READ_ERROR;
 		// report results
 		if (success) {
-			std::cout << std::hex << "SERVO WITH ID = " << id << "(model: " << model[0] << model[1] << ", firmware version: " << version[0] << version[1] << ") IS FOUND." << std::endl;
-			std::cout << "Servo is added to array under name '" << servo->getName() << "'."  << std::dec << std::endl ;
-			std::cout << servo->getName() << " ID = " << std::hex << servo->getID() << std::dec << " \t" << statusToString(status) << std::endl;
+			std::cout << std::dec << "SERVO WITH ID = " << std::dec << id << " (model: " << model[0] << model[1] << ", firmware version: " << version[0] << version[1] << ") IS FOUND." << std::endl;
+			std::cout << "Servo is added to array with name '" << servo->getName() << "'."  << std::dec << std::endl;
+			std::cout << servo->getName() << " ID = " << std::dec << servo->getID() << std::dec << " \t" << statusToString(status) << std::endl;
 			std::cout  << std::endl;
 		}
 		else {
-			std::cout << std::hex << "SERVO WITH ID = " << id << " IS FOUND." << std::endl;
+			std::cout << std::dec << "SERVO WITH ID = " << std::dec << id << " IS FOUND." << std::endl;
 			std::cout << "Interaction with servo FAILED. Skipping."  << std::endl << std::endl;
 			// remove servo from array
 			servos.erase(servo->getName());
@@ -802,7 +802,7 @@ void HerkulexArray::printAllRegistersRAM(const std::string& servo)
 		unsigned int val;
 		servo::Status status;
 
-		std::cout << s.getName() << " ID = " << std::hex << s.getID() << std::endl;
+		std::cout << s.getName() << " ID = " << std::dec << s.getID() << std::endl;
 		for(auto r = s.register_mapper.registers.begin(); r != s.register_mapper.registers.end(); r++) {
 			if (r->ram_addr != -1) {
 				s.reqRead_ram(req_pkt, r->name);
@@ -900,7 +900,7 @@ bool HerkulexArray::breakLoop()
 void HerkulexArray::sendPacket(const HerkulexPacket& req) 
 {
 	if (log(DEBUG)) {
-		log() << std::hex << std::setw(2) << std::setfill('0');
+		log() << std::dec << std::setw(2) << std::setfill('0');
 		log() << "REQ packet: servo_id: "  << (int) req.servo_id << " cmd: " << (int) req.command << " data(" << req.data.size() << "): ";
 		for(auto c = req.data.begin(); c != req.data.end(); c++) log() << (int) *c << " ";
 		log() << resetfmt << endlog();
@@ -930,8 +930,8 @@ bool HerkulexArray::sendRequest(const HerkulexPacket& req, servo::HerkulexServo:
 				success = ack_callback(*pkt_ack);
 
 				if (log(DEBUG)) {
-					log() << std::hex << std::setw(2) << std::setfill('0');
-					log() << "ACK packet: servo_id: " << (int) pkt_ack->servo_id << " cmd: " << (int) pkt_ack->command << " data(" << std::dec << pkt_ack->data.size() << std::hex << "): ";
+					log() << std::dec << std::setw(2) << std::setfill('0');
+					log() << "ACK packet: servo_id: " << (int) pkt_ack->servo_id << " cmd: " << (int) pkt_ack->command << " data(" << std::dec << pkt_ack->data.size() << std::dec << "): ";
 					for(auto c = pkt_ack->data.begin(); c != pkt_ack->data.end(); c++) log() << (int) *c << " ";
 					log() << resetfmt << std::endl << "(success = " << success << ", tryout = " << tryouts_prop - tryouts << ")" << endlog();
 				}
