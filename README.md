@@ -54,18 +54,18 @@ Servo array configuration can be loaded to `HerkulexArray` properties from OROCO
 TODO: rttlua (from `sweetie_bot_deploy`).
 TODO: launch as separate ROS node.
 
-Test array must contains two servos with hardware ID 0 and 1. Serial port `\dev\ttyUSB0` is used with baudrate 115600.
+Test array must contains two servos with hardware ID 0 and 1. Serial port `/dev/ttyUSB0` is used with baudrate 115600.
 See files in script folder for more details.
 
 To test **configuration non-realtime confuguration** (without `HerkulexSched`) run:
 
-    $ deployer -s `rospack find sweetie_bot_hardware_herkulex`/scripts/test_herkulex_array.ops
+    $ roslaunch sweetie_bot_herkulex_control test_herkulex_array.launch
 
 Test script loads two components `herk_driver` (`HerkulexDriver`) и `herk_array` (HerkulexArray). 
 Configuration file `test_servos.cpf` contains description of two servo with ID=0 and ID=1.
 Your can call various `HerkulexArray` operations from deployer (use	`ls herk_array` to browse HerkulexArray interface):
 
-	> herk_array.printAllServosStatuses()
+    > herk_array.printAllServosStatuses()
     > herk_array.setGoal("servo", a.JOG_SPEED, 3.14 / 4, 0) 
     > herk_array.setGoal("servo", a.JOG_POSITION, 0, 0.5)
     > herk_array.setRegisterRAM("test_servo", "led_control", 2)
@@ -75,7 +75,7 @@ Servo setting can be modified via properties of `herk_array`. After modification
 
 To test **real-time configuration** run:
 
-    $ deployer -s `rospack find sweetie_bot_hardware_herkulex`/scripts/test_herkulex_sched.ops
+    $ roslaunch sweetie_bot_herkulex_control test_herkulex_sched.launch
 
 The script loads following components:
 1. `sweetie_bot_hardware_herkulex` components: `herk_driver` (`HerkulexDriver`), `herk_array` (HerkulexArray) and `herk_sched` (`HerkulexSched`).

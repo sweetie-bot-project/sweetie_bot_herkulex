@@ -1,0 +1,3 @@
+<launch>
+  <node name="test_herk" pkg="rtt_ros" type="deployer" args="-s $(find sweetie_bot_herkulex_control)/scripts/test_herkulex_array.ops -ldebug" output="screen" />
+</launch>
