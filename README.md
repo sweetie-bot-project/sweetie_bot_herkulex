@@ -1,7 +1,7 @@
 SweetieBot Herkulex servos interface
 ======================================
 
-This package contains OROCOS components to control Herkulex DRS 101/202 servos. It is the part of [Sweetie Bot project](sweetiebot.net).
+This package contains OROCOS components to control Herkulex DRS 101/202 servos.
 [OROCOS](http://orocos.org) is C++ framework targeting the implementation of real-time control systems. It is compatible with ROS and OROCOS 
 components can be easily accessed from ROS nodes, see [`rtt_ros_integration` package](http://wiki.ros.org/rtt_ros_integration).
 Full documentation is available in Russian [here](https://gitlab.com/sweetie-bot/sweetie_doc/wikis/components-herkulex-alt).
@@ -51,8 +51,11 @@ Servo array configuration can be loaded to `HerkulexArray` properties from OROCO
 
 ### Usage
 
-TODO: rttlua (from `sweetie_bot_deploy`).
-TODO: launch as separate ROS node.
+**TODO**: rttlua deployment scripts (from `sweetie_bot_deploy`).
+
+
+**TODO**: launch as separate ROS node.
+
 
 Test array must contains two servos with hardware ID 0 and 1. Serial port `/dev/ttyUSB0` is used with baudrate 115600.
 See files in script folder for more details.
