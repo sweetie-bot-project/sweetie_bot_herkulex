@@ -358,7 +358,7 @@ std::vector<std::string> HerkulexArray::listServoRegistersRAM(const std::string&
 	return list;
 }
 
-unsigned long HerkulexArray::getRegisterRAM(const std::string& servo, const std::string& reg) 
+unsigned int HerkulexArray::getRegisterRAM(const std::string& servo, const std::string& reg)
 {
 	try {
 		const servo::HerkulexServo& s = getServo(servo);
@@ -389,7 +389,7 @@ bool HerkulexArray::setRegisterRAM(const std::string& servo, const std::string& 
 	}
 }
 
-unsigned long HerkulexArray::getRegisterEEP(const std::string& servo, const std::string& reg) 
+unsigned int HerkulexArray::getRegisterEEP(const std::string& servo, const std::string& reg)
 {
 	try {
 		const servo::HerkulexServo& s = getServo(servo);
@@ -449,7 +449,7 @@ bool HerkulexArray::setGoal(const std::string& servo, unsigned int mode, double 
 	}
 }
 
-unsigned long HerkulexArray::getStatus(const std::string& servo)
+unsigned int HerkulexArray::getStatus(const std::string& servo)
 {
 	try {
 		const servo::HerkulexServo& s = getServo(servo);

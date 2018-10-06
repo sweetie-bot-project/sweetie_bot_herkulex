@@ -93,16 +93,16 @@ class HerkulexArray : public RTT::TaskContext
 		std::vector<std::string> listServos();
 		std::vector<std::string> listServoRegistersRAM(const std::string& servo);
 
-		unsigned long getRegisterRAM(const std::string& servo, const std::string& reg);
+		unsigned int getRegisterRAM(const std::string& servo, const std::string& reg);
 		bool setRegisterRAM(const std::string& servo, const std::string& reg, unsigned int val);
 
-		unsigned long getRegisterEEP(const std::string& servo, const std::string& reg);
+		unsigned int getRegisterEEP(const std::string& servo, const std::string& reg);
 		bool setRegisterEEP(const std::string& servo, const std::string& reg, unsigned int val);
 
 		bool setGoalRaw(const std::string& servo, unsigned int mode, unsigned int goal, unsigned int playtime);
 		bool setGoal(const std::string& servo, unsigned int mode, double goal, double playtime);
 
-		unsigned long getStatus(const std::string& servo);
+		unsigned int getStatus(const std::string& servo);
 		bool clearStatus(const std::string& servo);
 
 		bool resetServo(const std::string& servo);
