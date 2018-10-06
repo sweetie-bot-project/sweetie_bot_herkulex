@@ -427,8 +427,8 @@ void HerkulexSched::updateHook()
 				if (sync_port.read(timer_id) == NewData) {
 					// we get sync msg before timer expires
 					log(ERROR) << "sync message is received before scheduler rounds have been finished." << endlog();
-					this->exception();
-					break;
+					// now wait for next sync
+					// TODO: display statistics
 				}
 				sched_state = SEND_JOG;
 				break;
