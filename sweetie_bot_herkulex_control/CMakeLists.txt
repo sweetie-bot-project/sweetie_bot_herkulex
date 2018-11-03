@@ -44,7 +44,7 @@ add_subdirectory( src )
 ### Orocos Package Exports and Install Targets ###
 
 # Scripts installation
-install(DIRECTORY scripts
+install(DIRECTORY scripts launch
 	DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 
 # Export package information (replaces catkin_package() macro)
