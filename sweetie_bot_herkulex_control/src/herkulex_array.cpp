@@ -67,8 +67,8 @@ HerkulexArray::HerkulexArray(std::string const& name) :
 	}
 	timeout_timer.getActivity()->thread()->start();
 	// init brodcast object
-	broadcast = std::shared_ptr<servo::HerkulexServo>(new servo::HerkulexServoDRS101("broadcast", 0xfe));
-	broadcast_init = std::shared_ptr<servo::RegisterValues>(new servo::RegisterValues());
+	broadcast = std::unique_ptr<servo::HerkulexServo>(new servo::HerkulexServoDRS101("broadcast", 0xfe));
+	broadcast_init = std::unique_ptr<servo::RegisterValues>(new servo::RegisterValues());
 
 	// INTERFACE
 	// CONSTANTS
@@ -255,16 +255,16 @@ bool HerkulexArray::configureHook()
             log(ERROR) << "Incorrect servos structure: unknown servo model: " << servo_model_prop.rvalue() << ". Known models: drs101, drs202." << endlog();
 			return false;
 		}*/
-		std::shared_ptr<servo::HerkulexServo> servo(new servo::HerkulexServoDRS101(servo_name, servo_id_prop.rvalue(), reverse_prop.rvalue(), offset_prop.rvalue()));
+		std::unique_ptr<servo::HerkulexServo> servo(new servo::HerkulexServoDRS101(servo_name, servo_id_prop.rvalue(), reverse_prop.rvalue(), offset_prop.rvalue()));
 		log(INFO) << "Add servo name = " << servo->getName() << " servo_id = " << servo->getID() << " offset = " << offset_prop.rvalue() << endlog();
-		if (!addServo(servo)) {
+		if ( !addServo(std::move(servo)) ) {
 			log(ERROR) << "Incorrect servos structure: dublicate servo name or servo_id." << endlog();
 			return false;
 		}
 
 		// Make cache for init registers values.
-		std::shared_ptr<servo::RegisterValues> reg_init(new servo::RegisterValues());
-		servos_init[servo_name] = reg_init;
+		servo::RegisterValues * reg_init = new servo::RegisterValues();
+		servos_init[servo_name] = std::unique_ptr<servo::RegisterValues>(reg_init);
 		Property<PropertyBag> registers_init_prop = servo_prop.rvalue().getProperty("registers_init");
 		if (registers_init_prop.ready()) {
 			for(PropertyBag::const_iterator p = registers_init_prop.rvalue().begin(); p != registers_init_prop.rvalue().end(); p++) {
@@ -284,13 +284,13 @@ bool HerkulexArray::configureHook()
 	}
 
 	// Check if "broadcast" object presents, remove it from HerkulexServoArray.
-	servo::HerkulexServoArray::const_iterator bcast = servos.find("broadcast");
+	servo::HerkulexServoArray::iterator bcast = servos.find("broadcast");
 	if (bcast == servos.end()) {
 		log(ERROR) << "Incorrect servos structure: current version of HerkulexArray requeres brodcast servo record." << endlog();
 		return false;
 	}
-	broadcast = bcast->second;
-	broadcast_init = servos_init.at("broadcast");
+	broadcast = std::move(bcast->second);
+	broadcast_init = std::move(servos_init.at("broadcast"));
 	servos.erase(bcast);
 	servos_init.erase("broadcast");
 
@@ -327,14 +327,14 @@ const servo::HerkulexServo& HerkulexArray::getServo(const string& name)
 	}
 }
 
-bool HerkulexArray::addServo(std::shared_ptr<servo::HerkulexServo> servo) 
+bool HerkulexArray::addServo(std::unique_ptr<servo::HerkulexServo>&& servo) 
 {
 	// Check if servo name or HW ID is already occupaied
 	if (servos.find(servo->getName()) != servos.end()) return false;
 	for(servo::HerkulexServoArray::const_iterator s = servos.begin(); s != servos.end(); s++) {
 		if (servo->getID() == s->second->getID()) return false;
 	}
-	servos.insert( std::make_pair(servo->getName(), servo) );
+	servos.insert( std::make_pair(servo->getName(), std::move(servo)) );
 	return true;
 }
 
@@ -770,7 +770,7 @@ void HerkulexArray::discoverServos()
 		}
 		if (s != servos.end()) continue;
 		// Create temporary object to access servo.
-		std::shared_ptr<servo::HerkulexServo> servo(new servo::HerkulexServoDRS101("servo_id_" + std::to_string(id), id));
+		std::unique_ptr<servo::HerkulexServo> servo(new servo::HerkulexServoDRS101("servo_id_" + std::to_string(id), id));
 		// Request servo.
 		servo::Status status;
 		servo->reqStat(req_pkt);
@@ -778,12 +778,12 @@ void HerkulexArray::discoverServos()
 		if (!success) continue;
 
 		// add servo to array
-		if (!addServo(servo)) {
+		if ( !addServo(std::move(servo)) ) {
 			std::cout << "SERVO WITH ID = " << std::dec << id << " IS FOUND." << std::endl;
 			std::cout << "But servo with name '"  << servo->getID() << "' is already presents in array. Skipping." << std::endl << std::endl;
 			continue;
 		}
-		servos_init[servo->getName()] = std::shared_ptr<servo::RegisterValues>(new servo::RegisterValues());
+		servos_init[servo->getName()] = std::unique_ptr<servo::RegisterValues>(new servo::RegisterValues());
 			
 		// read servo info
 		unsigned int model[2], version[2];

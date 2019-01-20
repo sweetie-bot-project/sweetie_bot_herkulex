@@ -273,7 +273,7 @@ namespace servo {
 			}
 	};
 
-	typedef std::unordered_map< std::string, std::shared_ptr<HerkulexServo> > HerkulexServoArray;
+	typedef std::unordered_map< std::string, std::unique_ptr<HerkulexServo> > HerkulexServoArray;
 
 } // namespace servo
 

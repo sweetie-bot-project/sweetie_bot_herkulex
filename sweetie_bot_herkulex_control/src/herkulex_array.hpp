@@ -59,9 +59,9 @@ class HerkulexArray : public RTT::TaskContext
 #endif
 		// cached servo configuration
 		servo::HerkulexServoArray servos; /**< Servo sructures */
-		std::map< std::string, std::shared_ptr<herkulex::servo::RegisterValues> > servos_init; /**< Registers initializeted on startup. */
-		std::shared_ptr<herkulex::servo::HerkulexServo> broadcast; /**< Fictive servo with broadcast ID. */
-		std::shared_ptr<herkulex::servo::RegisterValues> broadcast_init; /**< Global servo configuration. */
+		std::map< std::string, std::unique_ptr<herkulex::servo::RegisterValues> > servos_init; /**< Registers initializeted on startup. */
+		std::unique_ptr<herkulex::servo::HerkulexServo> broadcast; /**< Fictive servo with broadcast ID. */
+		std::unique_ptr<herkulex::servo::RegisterValues> broadcast_init; /**< Global servo configuration. */
 		// port buffer
 		sensor_msgs::JointState joints;
 		// packet buffers
@@ -138,7 +138,7 @@ class HerkulexArray : public RTT::TaskContext
 		bool setServoRegisters(const servo::HerkulexServo * s, const servo::RegisterValues * reg_init);
 		// servos access
 		const servo::HerkulexServo& getServo(const string& name); 
-		bool addServo(std::shared_ptr<servo::HerkulexServo> servo);
+		bool addServo(std::unique_ptr<servo::HerkulexServo>&& servo);
 
 	public:
 		HerkulexArray(std::string const& name);
