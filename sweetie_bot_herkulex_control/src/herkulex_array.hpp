@@ -80,6 +80,7 @@ class HerkulexArray : public RTT::TaskContext
 		RTT::PropertyBag servos_prop;
 		unsigned int tryouts_prop;
 		double timeout_prop;
+		double reset_delay_prop;
 
 	protected:
 		// PORTS
