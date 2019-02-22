@@ -255,12 +255,17 @@ bool HerkulexArray::configureHook()
             log(ERROR) << "Incorrect servos structure: unknown servo model: " << servo_model_prop.rvalue() << ". Known models: drs101, drs202." << endlog();
 			return false;
 		}*/
-		std::unique_ptr<servo::HerkulexServo> servo(new servo::HerkulexServoDRS101(servo_name, servo_id_prop.rvalue(), reverse_prop.rvalue(), offset_prop.rvalue()));
-		log(INFO) << "Add servo name = " << servo->getName() << " servo_id = " << servo->getID() << " offset = " << offset_prop.rvalue() << endlog();
-		if ( !addServo(std::move(servo)) ) {
-			log(ERROR) << "Incorrect servos structure: dublicate servo name or servo_id." << endlog();
-			return false;
+		servo::HerkulexServoArray::iterator it;
+		{
+			auto servo = new servo::HerkulexServoDRS101(servo_name, servo_id_prop.rvalue(), reverse_prop.rvalue(), offset_prop.rvalue());
+			log(INFO) << "Add servo name = " << servo->getName() << " servo_id = " << servo->getID() << " offset = " << offset_prop.rvalue() << endlog();
+			it = addServo(std::unique_ptr<herkulex::servo::HerkulexServo>(servo));
+			if ( it == servos.end() ) {
+				log(ERROR) << "Incorrect servos structure: dublicate servo name or servo_id." << endlog();
+				return false;
+			}
 		}
+		auto &servo = *it->second;
 
 		// Make cache for init registers values.
 		servo::RegisterValues * reg_init = new servo::RegisterValues();
@@ -269,7 +274,7 @@ bool HerkulexArray::configureHook()
 		if (registers_init_prop.ready()) {
 			for(PropertyBag::const_iterator p = registers_init_prop.rvalue().begin(); p != registers_init_prop.rvalue().end(); p++) {
 				Property<unsigned int> reg_val_prop(*p);
-				if (!reg_val_prop.ready() || !servo->register_mapper.findByName(reg_val_prop.getName())) {
+				if (!reg_val_prop.ready() || !servo.register_mapper.findByName(reg_val_prop.getName())) {
 					log(ERROR) << "Incorrect servos structure: registers_init contains invalid property: " << servo_name << "." << reg_val_prop.getName() << endlog();
 					return false;
 				}
@@ -327,15 +332,21 @@ const servo::HerkulexServo& HerkulexArray::getServo(const string& name)
 	}
 }
 
-bool HerkulexArray::addServo(std::unique_ptr<servo::HerkulexServo>&& servo) 
+servo::HerkulexServoArray::iterator HerkulexArray::addServo(std::unique_ptr<servo::HerkulexServo> servo) 
 {
-	// Check if servo name or HW ID is already occupaied
-	if (servos.find(servo->getName()) != servos.end()) return false;
-	for(servo::HerkulexServoArray::const_iterator s = servos.begin(); s != servos.end(); s++) {
-		if (servo->getID() == s->second->getID()) return false;
+	auto id = servo->getID();
+	// Check if servo name or HW ID is already occupied
+	if (!std::any_of(servos.cbegin(), servos.cend(), 
+			[&id](const servo::HerkulexServoArray::value_type& kv) {
+				return kv.second->getID() == id;
+			}
+	))
+	{
+		auto ret = servos.insert( std::make_pair(servo->getName(), std::move(servo)) );
+		if (ret.second)
+			return ret.first;
 	}
-	servos.insert( std::make_pair(servo->getName(), std::move(servo)) );
-	return true;
+	return servos.end();
 }
 
 std::vector<std::string> HerkulexArray::listServos() 
@@ -763,47 +774,50 @@ void HerkulexArray::discoverServos()
 {
 	for(unsigned int id = 0; id < 0xfe; id++) {
 		// Check if ID presents in array.
-		servo::HerkulexServoArray::const_iterator s = servos.begin(); 
-		while(s != servos.end()) {
-			if (s->second->getID() == id) break;
-			s++;
-		}
-		if (s != servos.end()) continue;
-		// Create temporary object to access servo.
-		std::unique_ptr<servo::HerkulexServo> servo(new servo::HerkulexServoDRS101("servo_id_" + std::to_string(id), id));
-		// Request servo.
-		servo::Status status;
-		servo->reqStat(req_pkt);
-		bool success = sendRequest(req_pkt, servo->ackCallbackStat(status));
-		if (!success) continue;
-
-		// add servo to array
-		if ( !addServo(std::move(servo)) ) {
-			std::cout << "SERVO WITH ID = " << std::dec << id << " IS FOUND." << std::endl;
-			std::cout << "But servo with name '"  << servo->getID() << "' is already presents in array. Skipping." << std::endl << std::endl;
+		if (std::any_of(servos.cbegin(), servos.cend(), 
+			[id](const servo::HerkulexServoArray::value_type& kv) {
+				return kv.second->getID() == id;
+			}
+		))
+		{
 			continue;
 		}
-		servos_init[servo->getName()] = std::unique_ptr<servo::RegisterValues>(new servo::RegisterValues());
-			
-		// read servo info
-		unsigned int model[2], version[2];
-		success = resetServo(servo->getName())
-			&& (model[0] = getRegisterEEP(servo->getName(), "model1")) != READ_ERROR
-			&& (model[1] = getRegisterEEP(servo->getName(), "model2")) != READ_ERROR
-			&& (version[0] = getRegisterEEP(servo->getName(), "version1")) != READ_ERROR
-			&& (version[1] = getRegisterEEP(servo->getName(), "version2")) != READ_ERROR;
-		// report results
-		if (success) {
-			std::cout << std::dec << "SERVO WITH ID = " << std::dec << id << " (model: " << model[0] << model[1] << ", firmware version: " << version[0] << version[1] << ") IS FOUND." << std::endl;
-			std::cout << "Servo is added to array with name '" << servo->getName() << "'."  << std::dec << std::endl;
-			std::cout << servo->getName() << " ID = " << std::dec << servo->getID() << std::dec << " \t" << statusToString(status) << std::endl;
-			std::cout  << std::endl;
+		// Create temporary object to access servo.
+		// add servo to array
+		auto it = addServo(std::unique_ptr<herkulex::servo::HerkulexServo>(new servo::HerkulexServoDRS101("servo_id_" + std::to_string(id), id)));
+		if (it == servos.end()) {
+			std::cout << "SERVO WITH ID = " << std::dec << id << " IS FOUND." << std::endl;
+			std::cout << "But servo with name '" << "servo_id_" << id << "' is already presents in array. Skipping." << std::endl << std::endl;
+			continue;
 		}
-		else {
+		
+		auto &servo = *it->second;
+		servo::Status status;
+		servo.reqStat(req_pkt);
+		bool success = true;
+		if (sendRequest(req_pkt, servo.ackCallbackStat(status))) {
+			servos_init[servo.getName()] = std::unique_ptr<servo::RegisterValues>(new servo::RegisterValues());
+
+			// read servo info
+			unsigned int model[2], version[2];
+			success = resetServo(servo.getName())
+				&& (model[0] = getRegisterEEP(servo.getName(), "model1")) != READ_ERROR
+				&& (model[1] = getRegisterEEP(servo.getName(), "model2")) != READ_ERROR
+				&& (version[0] = getRegisterEEP(servo.getName(), "version1")) != READ_ERROR
+				&& (version[1] = getRegisterEEP(servo.getName(), "version2")) != READ_ERROR;
+			// report results
+			if (success) {
+				std::cout << std::dec << "SERVO WITH ID = " << std::dec << id << " (model: " << model[0] << model[1] << ", firmware version: " << version[0] << version[1] << ") IS FOUND." << std::endl;
+				std::cout << "Servo is added to array with name '" << servo.getName() << "'."  << std::dec << std::endl;
+				std::cout << servo.getName() << " ID = " << std::dec << servo.getID() << std::dec << " \t" << statusToString(status) << std::endl;
+				std::cout  << std::endl;
+			}
+		}
+		if (!success) {
 			std::cout << std::dec << "SERVO WITH ID = " << std::dec << id << " IS FOUND." << std::endl;
 			std::cout << "Interaction with servo FAILED. Skipping."  << std::endl << std::endl;
 			// remove servo from array
-			servos.erase(servo->getName());
+			servos.erase(it);
 		}
 	}
 }

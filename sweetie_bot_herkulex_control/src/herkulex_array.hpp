@@ -138,7 +138,7 @@ class HerkulexArray : public RTT::TaskContext
 		bool setServoRegisters(const servo::HerkulexServo * s, const servo::RegisterValues * reg_init);
 		// servos access
 		const servo::HerkulexServo& getServo(const string& name); 
-		bool addServo(std::unique_ptr<servo::HerkulexServo>&& servo);
+		servo::HerkulexServoArray::iterator addServo(std::unique_ptr<servo::HerkulexServo> servo);
 
 	public:
 		HerkulexArray(std::string const& name);
