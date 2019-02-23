@@ -794,7 +794,7 @@ void HerkulexArray::discoverServos()
 		auto &servo = *it->second;
 		servo::Status status;
 		servo.reqStat(req_pkt);
-		bool success = true;
+		bool success = false;
 		if (sendRequest(req_pkt, servo.ackCallbackStat(status))) {
 			servos_init[servo.getName()] = std::unique_ptr<servo::RegisterValues>(new servo::RegisterValues());
 
