@@ -81,7 +81,7 @@ HerkulexArray::HerkulexArray(std::string const& name) :
 	this->addProperty("servos", servos_prop) 
 		.doc("Servo descriptions (PropertuBag). Format: \n"
 			 "\t\t\t{\n"
-			 "\t\t\t    PropertyBag servo_name1 { string servo_id, string servo_model, uint offset, bool reverse, PropertyBag register_init { uint register1, uint register2, ... } },\n"
+			 "\t\t\t    PropertyBag servo_name1 { string servo_id, string servo_model, uint offset, double scale, bool reverse, PropertyBag register_init { uint register1, uint register2, ... } },\n"
 			 "\t\t\t    PropertyBag servo_name2 { ... }\n"
 			 "\t\t\t    ...\n"
 			 "\t\t\t}");
@@ -251,6 +251,10 @@ bool HerkulexArray::configureHook()
             return false;
         }
 
+		double scale = 1.0;
+        Property<double> scale_prop = servo_prop.rvalue().getProperty("scale");
+        if (scale_prop.ready()) scale = scale_prop.rvalue();
+
 		/*if (servo_model_prop.rvalue() == "drs0101" || servo_model_prop.rvalue() == "drs0201") {
 			servos.addServo(new HerkulexServoDRS101(name, servo_id_prop.rvalue(), reverse_prop.rvalue(), offset_prop.rvalue()));
 		}
@@ -258,8 +262,8 @@ bool HerkulexArray::configureHook()
             log(ERROR) << "Incorrect servos structure: unknown servo model: " << servo_model_prop.rvalue() << ". Known models: drs101, drs202." << endlog();
 			return false;
 		}*/
-		std::shared_ptr<servo::HerkulexServo> servo(new servo::HerkulexServoDRS101(servo_name, servo_id_prop.rvalue(), reverse_prop.rvalue(), offset_prop.rvalue()));
-		log(INFO) << "Add servo name = " << servo->getName() << " servo_id = " << servo->getID() << " offset = " << offset_prop.rvalue() << endlog();
+		std::shared_ptr<servo::HerkulexServo> servo(new servo::HerkulexServoDRS101(servo_name, servo_id_prop.rvalue(), reverse_prop.rvalue(), offset_prop.rvalue(), scale));
+		log(INFO) << "Add servo name = " << servo->getName() << " servo_id = " << servo->getID() << " offset = " << offset_prop.rvalue() << " scale = " << scale << endlog();
 		if (!addServo(servo)) {
 			log(ERROR) << "Incorrect servos structure: dublicate servo name or servo_id." << endlog();
 			return false;

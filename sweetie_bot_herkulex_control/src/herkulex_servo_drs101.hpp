@@ -18,7 +18,7 @@ namespace servo {
 			static const RegisterMapper register_mapper_drs101;
 	
 		public:	
-			HerkulexServoDRS101(const std::string& _name, unsigned int _hw_id, bool _reverse = false, int _offset = POS_RAW_MAX/2);
+			HerkulexServoDRS101(const std::string& _name, unsigned int _hw_id, bool _reverse = false, int _offset = POS_RAW_MAX/2, double _scale = 1.0);
 
 			virtual double convertVelRawToRad(unsigned int raw) const;
 			virtual unsigned int convertVelRadToRaw(double vel) const;

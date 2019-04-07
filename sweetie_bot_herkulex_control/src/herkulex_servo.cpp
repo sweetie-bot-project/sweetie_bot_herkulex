@@ -17,12 +17,13 @@ RegisterMapper::RegisterMapper(const std::vector<Register>& _regs) :
 	};
 }
 
-HerkulexServo::HerkulexServo(const std::string& _name, const RegisterMapper& _mapper, unsigned int _hw_id, bool _reverse, int _offset) :
+HerkulexServo::HerkulexServo(const std::string& _name, const RegisterMapper& _mapper, unsigned int _hw_id, bool _reverse, int _offset, double _scale) :
 	register_mapper(_mapper),
 	name(_name),
 	hw_id(_hw_id),
 	reverse(_reverse),
-	offset(_offset)
+	offset(_offset),
+	scale(_scale)
 {
 }
 

@@ -82,32 +82,32 @@ const std::vector<Register> HerkulexServoDRS101::registers_drs101 =
 
 const RegisterMapper HerkulexServoDRS101::register_mapper_drs101 = RegisterMapper(registers_drs101);
 
-HerkulexServoDRS101::HerkulexServoDRS101(const std::string& _name, unsigned int _hw_id, bool _reverse, int _offset) :
-	HerkulexServo(_name, register_mapper_drs101, _hw_id, _reverse, _offset)
+HerkulexServoDRS101::HerkulexServoDRS101(const std::string& _name, unsigned int _hw_id, bool _reverse, int _offset, double _scale) :
+	HerkulexServo(_name, register_mapper_drs101, _hw_id, _reverse, _offset, _scale)
 {};
 
 double HerkulexServoDRS101::convertVelRawToRad(unsigned int raw) const 
 {
-	double vel = VEL_CONV_COEFF_RAW2RADS * (int16_t) raw;
+	double vel = scale*VEL_CONV_COEFF_RAW2RADS * (int16_t) raw;
 	return reverse ? -vel : vel;
 };
 
 unsigned int HerkulexServoDRS101::convertVelRadToRaw(double vel) const
 {
 	vel = reverse ? -vel : vel;
-	return vel / VEL_CONV_COEFF_RAW2RADS;
+	return vel / (scale*VEL_CONV_COEFF_RAW2RADS);
 };
 
 double HerkulexServoDRS101::convertPosRawToRad(unsigned int raw) const 
 {
-	double pos = POS_CONV_COEFF_RAW2RAD * ((int) raw - offset);
+	double pos = scale*POS_CONV_COEFF_RAW2RAD * ((int) raw - offset);
 	return reverse ? -pos : pos;
 };
 
 unsigned int HerkulexServoDRS101::convertPosRadToRaw(double pos) const
 {
 	pos = reverse ? -pos : pos;
-	return pos / POS_CONV_COEFF_RAW2RAD + offset;
+	return pos / (scale*POS_CONV_COEFF_RAW2RAD) + offset;
 };
 
 double HerkulexServoDRS101::convertTimeRawToSec(unsigned int raw) const 

@@ -149,6 +149,7 @@ namespace servo {
 			unsigned int hw_id;
 			bool reverse;
 			int offset;
+			double scale;
 
 		public:
 			const RegisterMapper& register_mapper;
@@ -159,13 +160,14 @@ namespace servo {
 			bool ackStatReturn_impl(const HerkulexPacket& ack, Status& status) const;
 
 		public:
-			HerkulexServo(const std::string& _name, const RegisterMapper& mapper, unsigned int _hw_id, bool _reverse, int _offset);
+			HerkulexServo(const std::string& _name, const RegisterMapper& mapper, unsigned int _hw_id, bool _reverse, int _offset, double _scale = 1.0);
 
 			// data fields access
 			const std::string& getName() const { return name; }
 			unsigned int getID() const { return hw_id; }
 			bool isReverse() const { return reverse; }
 			bool getOffset() const { return offset; }
+			bool getScale() const { return scale; }
 
 			// Request packets generations.
 			void reqRead_ram(HerkulexPacket& req, const std::string& reg) const;
