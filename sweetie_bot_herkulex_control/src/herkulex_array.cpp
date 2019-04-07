@@ -91,6 +91,9 @@ HerkulexArray::HerkulexArray(std::string const& name) :
 	this->addProperty("timeout", timeout_prop)
 		.doc("Operation timeout (seconds).")
 		.set(0.1);
+	this->addProperty("mass_reset", mass_reset_prop)
+		.doc("Reset all servos with broadcast command. This is faster then per servo reset but some servos can be turned off for too long time.")
+		.set(true);
 	this->addProperty("reset_delay", reset_delay_prop)
 		.doc("Delay between reset servo command and following register assigment commands (seconds).")
 		.set(0.025);
@@ -523,25 +526,25 @@ bool HerkulexArray::resetServo(const std::string& servo)
 bool HerkulexArray::resetAllServos() 
 {
 	try {
-		//BROADCAST VERSION: broadcast write is not working...
-		/*
-		// reset all servos
-		broadcast->reqReset(req_pkt);
-		sendPacket(req_pkt);
+		// mass init version
+		if (mass_reset_prop) {
+			// reset all servos
+			broadcast->reqReset(req_pkt);
+			sendPacket(req_pkt);
+			// Wait for servos to reset.
+			timeout_timer.arm(TIMEOUT_TIMER_ID, reset_delay_prop);
+			timeout_timer.waitFor(TIMEOUT_TIMER_ID);
 
-		//Wait for servos to resert.
-		timeout_timer.arm(TIMEOUT_TIMER_ID, 1.0);
-		timeout_timer.waitFor(TIMEOUT_TIMER_ID);
-
-		// Set ack policy: BROADCAST IS NOT WORKING
-		//broadcast->reqWrite_ram(req_pkt, "ack_policy", 2);
-		//sendPacket(req_pkt);
-		// global registers init 
-		const RegisterValues * reg_init = broadcast_init;
-		for(RegisterValues::const_iterator r = reg_init->begin(); r != reg_init->end(); r++) {
-			broadcast->reqWrite_ram(req_pkt, r->fist, r->second);
-			sendPacketCM(req_pkt);
-		}*/
+			/* Set ack policy: BROADCAST WRITE IS NOT WORKING
+			broadcast->reqWrite_ram(req_pkt, "ack_policy", 2);
+			sendPacket(req_pkt);
+			// global registers init 
+			const RegisterValues * reg_init = broadcast_init;
+			for(RegisterValues::const_iterator r = reg_init->begin(); r != reg_init->end(); r++) {
+				broadcast->reqWrite_ram(req_pkt, r->fist, r->second);
+				sendPacketCM(req_pkt);
+			}*/
+		}
 
 		// init servo individually and check status
 		servo::Status status;
@@ -549,13 +552,14 @@ bool HerkulexArray::resetAllServos()
 		for(servo::HerkulexServoArray::const_iterator iter = servos.begin(); iter != servos.end(); iter++) {
 			const servo::HerkulexServo * s = iter->second.get();
 
-			//reset servo
-			s->reqReset(req_pkt);
-			sendPacket(req_pkt);
-
-			//wait for servo to reset
-			timeout_timer.arm(TIMEOUT_TIMER_ID, reset_delay_prop);
-			timeout_timer.waitFor(TIMEOUT_TIMER_ID);
+			if (!mass_reset_prop) {
+				// reset servo
+				s->reqReset(req_pkt);
+				sendPacket(req_pkt);
+				// wait for servo to reset
+				timeout_timer.arm(TIMEOUT_TIMER_ID, reset_delay_prop);
+				timeout_timer.waitFor(TIMEOUT_TIMER_ID);
+			}
 
 			//set ack policy to always reply
 			s->reqWrite_ram(req_pkt, "ack_policy", 2);
