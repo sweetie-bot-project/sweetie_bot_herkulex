@@ -767,12 +767,13 @@ void HerkulexArray::discoverServos()
 {
 	for(unsigned int id = 0; id < 0xfe; id++) {
 		// Check if ID presents in array.
-		servo::HerkulexServoArray::const_iterator s = servos.begin(); 
-		while(s != servos.end()) {
-			if (s->second->getID() == id) break;
-			s++;
+		if (std::any_of(servos.cbegin(), servos.cend(),
+						[&id](const servo::HerkulexServoArray::value_type& kv) {
+							return kv.second->getID() == id;
+						}))
+		{
+			continue;
 		}
-		if (s != servos.end()) continue;
 		// Create temporary object to access servo.
 		std::shared_ptr<servo::HerkulexServo> servo(new servo::HerkulexServoDRS101("servo_id_" + std::to_string(id), id));
 		// Request servo.
@@ -784,7 +785,7 @@ void HerkulexArray::discoverServos()
 		// add servo to array
 		if (!addServo(servo)) {
 			std::cout << "SERVO WITH ID = " << std::dec << id << " IS FOUND." << std::endl;
-			std::cout << "But servo with name '"  << servo->getID() << "' is already presents in array. Skipping." << std::endl << std::endl;
+			std::cout << "But servo with name '"  << servo->getID() << "' is already present in array. Skipping." << std::endl << std::endl;
 			continue;
 		}
 		servos_init[servo->getName()] = std::shared_ptr<servo::RegisterValues>(new servo::RegisterValues());
