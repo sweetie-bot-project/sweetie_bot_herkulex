@@ -96,7 +96,7 @@ HerkulexArray::HerkulexArray(std::string const& name) :
 		.set(true);
 	this->addProperty("reset_delay", reset_delay_prop)
 		.doc("Delay between reset servo command and following register assigment commands (seconds).")
-		.set(0.025);
+		.set(0.3);
 
 	// PORTS
 	this->addPort("out_joints", joints_port).doc("Publish JointState by request.");

@@ -49,6 +49,11 @@ Servo array configuration can be loaded to `HerkulexArray` properties from OROCO
 1. `HerkulexDriver` reset receiver state after each send operations. So it is impossible efficiently mix commands with ACK and without ACK.
 2. `HerkulexArray` read `in_goals` port one time  per control cycle. This can cause unwanted behaviour in presence of multiple writers or if port bufferization is turned on.
 
+### Konown issues
+
+if `reset_delay` property of HerkulexArray is to small it is unable to reset and discover servos. In some cases it can case unpredictable servo behavior 
+probably due command misinterpretation.
+
 ### Usage
 
 **TODO**: rttlua deployment scripts (from `sweetie_bot_deploy`).
