@@ -11,6 +11,7 @@
 #
 # Arrays must have the same size as name or be empty.
 # 
+Header header
 string[] name
 float64[] pos
 float64[] vel

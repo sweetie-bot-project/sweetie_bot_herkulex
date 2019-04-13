@@ -297,6 +297,10 @@ void HerkulexSched::updateHook()
 				// RT round is finished
 				timer.killTimer(ROUND_TIMER);
 
+				ros::Time timestamp = ros::Time::now();
+				joints.header.stamp = timestamp;
+				states.header.stamp = timestamp;
+
 				joints_port.write(joints);
 				states_port.write(states);
 
