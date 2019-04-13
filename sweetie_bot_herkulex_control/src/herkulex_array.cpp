@@ -154,6 +154,8 @@ HerkulexArray::HerkulexArray(std::string const& name) :
 	this->addOperation("clearStatus", &HerkulexArray::clearStatus, this, OwnThread)
 		.doc("Clear status register of servo. Return true on success.")
 		.arg("servo", "Servo name.");
+	this->addOperation("clearAllStatuses", &HerkulexArray::clearAllStatuses, this, OwnThread)
+		.doc("Clear status register of all servos in array. Return true on success.");
 	this->addOperation("resetServo", &HerkulexArray::resetServo, this, OwnThread)
 		.doc("Reset servo and init it again. Must clear all *hard* error status.")
 		.arg("servo", "Servo name.");
@@ -487,6 +489,21 @@ bool HerkulexArray::clearStatus(const std::string& servo)
 		log(ERROR) << e.what() << endlog();
 		return false;
 	}
+}
+
+bool HerkulexArray::clearAllStatuses()
+{
+	bool success = true;
+	for(servo::HerkulexServoArray::const_iterator iter = servos.begin(); iter != servos.end(); iter++) {
+		const servo::HerkulexServo * s = iter->second.get();
+
+		servo::Status status;
+		s->reqWriteClearStatus(req_pkt);
+		if (!sendRequest(req_pkt, s->ackCallbackWriteClearStatus(status))) {
+			success = false;
+		}
+	}
+	return false;
 }
 
 bool HerkulexArray::setServoRegisters(const servo::HerkulexServo * s, const servo::RegisterValues * reg_init) 

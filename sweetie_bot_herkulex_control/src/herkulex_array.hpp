@@ -106,6 +106,7 @@ class HerkulexArray : public RTT::TaskContext
 
 		unsigned int getStatus(const std::string& servo);
 		bool clearStatus(const std::string& servo);
+		bool clearAllStatuses();
 
 		bool resetServo(const std::string& servo);
 		bool resetAllServos();
