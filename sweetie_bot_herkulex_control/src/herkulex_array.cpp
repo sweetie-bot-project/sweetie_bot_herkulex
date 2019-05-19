@@ -325,7 +325,7 @@ bool HerkulexArray::configureHook()
 	return true;
 }
 
-const servo::HerkulexServo& HerkulexArray::getServo(const string& name) 
+const servo::HerkulexServo& HerkulexArray::getServo(const std::string& name) 
 {
 	servo::HerkulexServoArray::const_iterator s = servos.find(name);
 	if (s != servos.end()) {
