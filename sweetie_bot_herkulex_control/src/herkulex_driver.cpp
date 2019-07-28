@@ -218,6 +218,15 @@ void HerkulexDriver::updateHook()
 					break;
 
 				case PACKET_SIZE:
+					if (c > HerkulexPacket::HEADER_SIZE + HerkulexPacket::DATA_SIZE) {
+						// incorrect packet size
+						if (c == 0xFF) recv_state = PACKET_SIZE;
+						else {
+							log(WARN) << "ACK packet size is incorrect, size = " << std::dec << (unsigned int) c <<  endlog();
+							recv_state = HEADER1;
+						}
+						break;
+					}
 					recv_pkt_size = c;
 					recv_state = SERVO_ID;
 					break;
