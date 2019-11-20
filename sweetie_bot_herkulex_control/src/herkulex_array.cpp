@@ -161,6 +161,10 @@ HerkulexArray::HerkulexArray(std::string const& name) :
 		.arg("servo", "Servo name.");
 	this->addOperation("resetAllServos", &HerkulexArray::resetAllServos, this, OwnThread)
 		.doc("Reset all servos and init them again. Must clear all *hard* error status.");
+	this->addOperation("setTorqueFree", &HerkulexArray::setTorqueFree, this, OwnThread)
+		.doc("Change torque control mode for one servo.")
+		.arg("servo", "Servo name.")
+		.arg("torque_free", "If torque_free is true set TorqueFree mode (axises of servos are mannually movable). Use registers_init setting otherwise.");
 	this->addOperation("setAllServosTorqueFree", &HerkulexArray::setAllServosTorqueFree, this, OwnThread)
 		.doc("Change torque control mode of all servos.")
 		.arg("torque_free", "If torque_free is true set TorqueFree mode (axises of servos are mannually movable). Use registers_init setting otherwise.");
@@ -616,6 +620,49 @@ bool HerkulexArray::resetAllServos()
 	}
 }
 
+bool HerkulexArray::setTorqueFree_impl(const servo::HerkulexServo * s, bool torque_free) 
+{
+	bool success = true;
+	// set torque off
+	unsigned int new_mode = 0; // assume that in all confugurations zero means torque free
+	if (!torque_free) {
+		// get mode from array configuration
+		servo::RegisterValues::const_iterator reg_value_iter;
+		const servo::RegisterValues * reg_init = servos_init.at(s->getName()).get();
+		reg_value_iter = reg_init->find("torque_control");
+		if (reg_value_iter != reg_init->end()) {
+			new_mode = reg_value_iter->second;
+		}
+		else {
+			reg_value_iter = broadcast_init->find("torque_control");
+			if (reg_value_iter != broadcast_init->end()) {
+				new_mode = reg_value_iter->second;
+			}
+		}
+	}
+	// send write command
+	servo::Status status;
+	s->reqWrite_ram(req_pkt, "torque_control", new_mode);
+	if (!sendRequest(req_pkt, s->ackCallbackWrite_ram(status))) {
+		log(ERROR) << "Write " << s->getName() << " \'torque_control\' failed. Skipping servo." << endlog();
+		success = false;
+	}
+	return success;
+}
+
+bool HerkulexArray::setTorqueFree(const std::string& servo, bool torque_free)
+{
+	try {
+		const servo::HerkulexServo& s = getServo(servo);
+		// switch torque	
+		return setTorqueFree_impl(&s, torque_free);
+	}
+	catch (const std::out_of_range& e) {
+		log(ERROR) << e.what() << endlog();
+		return false;
+	}
+}
+
 bool HerkulexArray::setAllServosTorqueFree(bool torque_free) 
 {
 	try {
@@ -623,29 +670,8 @@ bool HerkulexArray::setAllServosTorqueFree(bool torque_free)
 
 		for(servo::HerkulexServoArray::const_iterator iter = servos.begin(); iter != servos.end(); iter++) {
 			const servo::HerkulexServo * s = iter->second.get();
-			unsigned int new_mode;
-
-			if (torque_free) {
-				new_mode = 0; 
-			}
-			else {
-				servo::RegisterValues::const_iterator reg_value_iter;
-				const servo::RegisterValues * reg_init = servos_init.at(s->getName()).get();
-				reg_value_iter = reg_init->find("torque_control");
-				if (reg_value_iter == reg_init->end()) {
-					reg_value_iter = broadcast_init->find("torque_control");
-					if (reg_value_iter == broadcast_init->end()) {
-						// do nothin
-						continue;
-					}
-				}
-				new_mode = reg_value_iter->second;
-			}
-
-			servo::Status status;
-			s->reqWrite_ram(req_pkt, "torque_control", new_mode);
-			if (!sendRequest(req_pkt, s->ackCallbackWrite_ram(status))) {
-				log(ERROR) << "Write " << s->getName() << " \'torque_control\' failed. Skipping servo." << endlog();
+			// switch torque	
+			if (!setTorqueFree_impl(s, torque_free)) {
 				success = false;
 			}
 		}
