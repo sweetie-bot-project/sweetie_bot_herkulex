@@ -126,9 +126,9 @@ class HerkulexArray : public RTT::TaskContext
 		// OPERATIONS: PROVIDED (protocol interface)
 		bool reqIJOG(HerkulexPacket& req, const ServoGoal& goal);
 		bool reqPosVel(HerkulexPacket& req, const std::string& servo);
-		bool ackPosVel(const HerkulexPacket& ack, const std::string& servo, double& pos, double& vel, unsigned int& status);
+		bool ackPosVel(const HerkulexPacket& ack, const std::string& servo, double& pos, double& vel, servo::Status& status);
 		bool reqState(HerkulexPacket& req, const std::string& servo);
-		bool ackState(const HerkulexPacket& ack, const std::string& servo, HerkulexServoState& state, unsigned int& status);
+		bool ackState(const HerkulexPacket& ack, const std::string& servo, HerkulexServoState& state, servo::Status& status);
 
 	protected:
 		// interrupt waiting

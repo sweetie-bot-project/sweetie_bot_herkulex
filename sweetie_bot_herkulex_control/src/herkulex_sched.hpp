@@ -14,6 +14,8 @@
 #include <sweetie_bot_herkulex_msgs/typekit/HerkulexSchedStatistics.h>
 #include <sweetie_bot_herkulex_msgs/typekit/ServoGoal.h>
 
+#include "herkulex_servo.hpp"
+
 #define SCHED_STATISTICS
 
 namespace herkulex 
@@ -112,9 +114,9 @@ class HerkulexSched : public RTT::TaskContext
 		// OPERATIONS: PROTOCOL
 		RTT::OperationCaller<bool (HerkulexPacket& req, const ServoGoal& goal)> reqIJOG;
 		RTT::OperationCaller<bool (HerkulexPacket& req, const std::string& servo)> reqPosVel;
-		RTT::OperationCaller<bool (const HerkulexPacket& ack, const std::string& servo, double& pos, double& vel, unsigned int& status)> ackPosVel;
+		RTT::OperationCaller<bool (const HerkulexPacket& ack, const std::string& servo, double& pos, double& vel, servo::Status& status)> ackPosVel;
 		RTT::OperationCaller<bool (HerkulexPacket& req, const std::string& servo)> reqState;
-		RTT::OperationCaller<bool (const HerkulexPacket& ack, const std::string& servo, HerkulexServoState& state, unsigned int& status)> ackState;
+		RTT::OperationCaller<bool (const HerkulexPacket& ack, const std::string& servo, HerkulexServoState& state, servo::Status& status)> ackState;
 
 	public:
 		HerkulexSched(std::string const& name);

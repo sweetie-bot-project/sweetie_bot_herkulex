@@ -134,7 +134,8 @@ bool HerkulexSched::configureHook()
 	states.name.resize(poll_list.size());
 	states.pos.resize(poll_list.size());
 	states.vel.resize(poll_list.size());
-	states.status.resize(poll_list.size());
+	states.error.resize(poll_list.size());
+	states.detail.resize(poll_list.size());
 
 	if (detailed_state) {
 		states.pwm.resize(poll_list.size());
@@ -160,7 +161,8 @@ void HerkulexSched::clearPortBuffers() {
 	states.name.clear();
 	states.pos.clear();
 	states.vel.clear();
-	states.status.clear();
+	states.error.clear();
+	states.detail.clear();
 
 	//if (detailed_state) {
 	states.pwm.clear();
@@ -369,7 +371,7 @@ void HerkulexSched::updateHook()
 			while (!ack_buffer.empty()) {
 				HerkulexPacket * ack_pkt = ack_buffer.PopWithoutRelease();
 				double pos, vel;
-				unsigned int status;
+				servo::Status status;
 				if (! detailed_state) {
 					success = ackPosVel(*ack_pkt, poll_list[poll_index], pos, vel, status);
 				}
@@ -395,7 +397,8 @@ void HerkulexSched::updateHook()
 						states.name.push_back(poll_list[poll_index]);
 						states.pos.push_back(pos);
 						states.vel.push_back(vel);
-						states.status.push_back(status);
+						states.error.push_back(status.error);
+						states.detail.push_back(status.detail);
 					}
 #ifdef SCHED_STATISTICS
 					statistics.rt_read_req_durationN = timeout - timer.timeRemaining(REQUEST_TIMEOUT_TIMER);

@@ -473,7 +473,7 @@ unsigned int HerkulexArray::getStatus(const std::string& servo)
 		s.reqStat(req_pkt);
 		bool success =  sendRequest(req_pkt, s.ackCallbackStat(status));
 		if (success) return status.error + (static_cast<unsigned long>(status.detail) << 8);
-		else READ_ERROR;
+		else return READ_ERROR;
 	} 
 	catch (const std::out_of_range& e) {
 		log(ERROR) << e.what() << endlog();
@@ -907,7 +907,7 @@ bool HerkulexArray::reqPosVel(HerkulexPacket& req, const std::string& servo)
 	return true;
 }
 
-bool HerkulexArray::ackPosVel(const HerkulexPacket& ack, const std::string& servo, double& pos, double& vel, unsigned int& _status) 
+bool HerkulexArray::ackPosVel(const HerkulexPacket& ack, const std::string& servo, double& pos, double& vel, servo::Status& _status) 
 {
 	if (!this->isConfigured()) return false;
 	servo::Status status;
@@ -923,7 +923,7 @@ bool HerkulexArray::reqState(HerkulexPacket& req, const std::string& servo)
 	return true;
 }
 
-bool HerkulexArray::ackState(const HerkulexPacket& ack, const std::string& servo, HerkulexServoState& state_array, unsigned int& _status) 
+bool HerkulexArray::ackState(const HerkulexPacket& ack, const std::string& servo, HerkulexServoState& state_array, servo::Status& _status) 
 {
 	if (!this->isConfigured()) return false;
 	servo::Status status;
@@ -938,7 +938,8 @@ bool HerkulexArray::ackState(const HerkulexPacket& ack, const std::string& servo
 		state_array.pos_goal.push_back(state.pos_goal);
 		state_array.pos_desired.push_back(state.pos_desired);
 		state_array.vel_desired.push_back(state.vel_desired);
-		state_array.status.push_back(_status);
+		state_array.error.push_back(_status.error);
+		state_array.detail.push_back(_status.detail);
 	}
 	return success;
 }
