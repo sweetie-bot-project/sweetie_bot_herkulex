@@ -110,6 +110,7 @@ class HerkulexArray : public RTT::TaskContext
 
 		bool resetServo(const std::string& servo);
 		bool resetAllServos();
+		bool setTorqueFree(const std::string& servo, bool torque_free);
 		bool setAllServosTorqueFree(bool torque_on);
 
 		bool publishJointStates();
@@ -125,9 +126,9 @@ class HerkulexArray : public RTT::TaskContext
 		// OPERATIONS: PROVIDED (protocol interface)
 		bool reqIJOG(HerkulexPacket& req, const ServoGoal& goal);
 		bool reqPosVel(HerkulexPacket& req, const std::string& servo);
-		bool ackPosVel(const HerkulexPacket& ack, const std::string& servo, double& pos, double& vel, unsigned int& status);
+		bool ackPosVel(const HerkulexPacket& ack, const std::string& servo, double& pos, double& vel, servo::Status& status);
 		bool reqState(HerkulexPacket& req, const std::string& servo);
-		bool ackState(const HerkulexPacket& ack, const std::string& servo, HerkulexServoState& state, unsigned int& status);
+		bool ackState(const HerkulexPacket& ack, const std::string& servo, HerkulexServoState& state, servo::Status& status);
 
 	protected:
 		// interrupt waiting
@@ -138,6 +139,7 @@ class HerkulexArray : public RTT::TaskContext
 		// Helper fuctions
 		std::string statusToString(servo::Status status) ;
 		bool setServoRegisters(const servo::HerkulexServo * s, const servo::RegisterValues * reg_init);
+		bool setTorqueFree_impl(const servo::HerkulexServo * s, bool torque_free);
 		// servos access
 		const servo::HerkulexServo& getServo(const std::string& name); 
 		bool addServo(std::shared_ptr<servo::HerkulexServo> servo);

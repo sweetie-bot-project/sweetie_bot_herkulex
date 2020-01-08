@@ -83,7 +83,6 @@ namespace servo {
 		double vel_desired;
 	};
 
-	//TODO decide if Status msg type is necessary
 	//typedef sweetie_bot_hardware_herkulex_msgs::Status;
 	struct Status {
 		unsigned char error;
