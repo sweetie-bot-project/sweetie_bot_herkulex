@@ -62,8 +62,8 @@ protected:
 #endif
   // scheduler state
   SchedulerState sched_state;
-  int poll_index;
-  int poll_end_index;
+  unsigned long poll_index;
+  unsigned long poll_end_index;
   // package buffers
   RTT::base::BufferLockFree<HerkulexPacket> cm_req_buffer;
   RTT::base::BufferLockFree<HerkulexPacket> ack_buffer;
@@ -97,6 +97,7 @@ protected:
   double period_CM;
   bool detailed_state;
   std::vector<std::string> poll_list;
+  unsigned char poll_list_size;
   int poll_round_size;
   double timeout;
 

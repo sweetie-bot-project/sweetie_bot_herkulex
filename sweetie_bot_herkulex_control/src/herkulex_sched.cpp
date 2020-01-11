@@ -11,16 +11,16 @@ namespace herkulex
 // Convinence macro fo logging.
 std::ostream& resetfmt(std::ostream& s)
 {
-  s.copyfmt(std::ios(NULL));
+  s.copyfmt(std::ios(nullptr));
   return s;
 }
 
 HerkulexSched::HerkulexSched(std::string const& name)
-    : TaskContext(name, PreOperational), receivePacketCM("receivePacketCM", this->engine()),
-      sendPacketDL("sendPacketDL", this->engine()), waitSendPacketDL("waitSendPacketDL", this->engine()),
-      reqIJOG("reqIJOG"), reqPosVel("reqPosVel"), ackPosVel("ackPosVel"), reqState("reqState"), ackState("ackState"),
+    : TaskContext(name, PreOperational), log(logger::categoryFromComponentName(name)),
       cm_req_buffer(10, HerkulexPacket(), true), ack_buffer(10, HerkulexPacket(), true), timer(this),
-      log(logger::categoryFromComponentName(name))
+      sendPacketDL("sendPacketDL", this->engine()), waitSendPacketDL("waitSendPacketDL", this->engine()),
+      receivePacketCM("receivePacketCM", this->engine()), reqIJOG("reqIJOG"), reqPosVel("reqPosVel"),
+      ackPosVel("ackPosVel"), reqState("reqState"), ackState("ackState")
 {
   if (!log.ready())
   {
@@ -120,23 +120,28 @@ bool HerkulexSched::configureHook()
   ack_buffer.data_sample(req_pkt);
   cm_req_buffer.data_sample(req_pkt);
 
-  // reserve port buffers
-  joints.name.resize(poll_list.size());
-  joints.position.resize(poll_list.size());
-  joints.velocity.resize(poll_list.size());
+  if (poll_list.size() > 255)
+    log(WARN) << "poll_list can't be longer 255 elements." << endlog();
 
-  states.name.resize(poll_list.size());
-  states.pos.resize(poll_list.size());
-  states.vel.resize(poll_list.size());
-  states.error.resize(poll_list.size());
-  states.detail.resize(poll_list.size());
+  poll_list_size = u_char(poll_list.size());
+
+  // reserve port buffers
+  joints.name.resize(poll_list_size);
+  joints.position.resize(poll_list_size);
+  joints.velocity.resize(poll_list_size);
+
+  states.name.resize(poll_list_size);
+  states.pos.resize(poll_list_size);
+  states.vel.resize(poll_list_size);
+  states.error.resize(poll_list_size);
+  states.detail.resize(poll_list_size);
 
   if (detailed_state)
   {
-    states.pwm.resize(poll_list.size());
-    states.pos_goal.resize(poll_list.size());
-    states.pos_desired.resize(poll_list.size());
-    states.vel_desired.resize(poll_list.size());
+    states.pwm.resize(poll_list_size);
+    states.pos_goal.resize(poll_list_size);
+    states.pos_desired.resize(poll_list_size);
+    states.vel_desired.resize(poll_list_size);
   }
 
   // set data samples
@@ -243,10 +248,10 @@ void HerkulexSched::updateHook()
         {
           log() << "Start RT round." << std::endl;
           log() << std::dec << std::setw(2) << std::setfill('0');
-          log() << "REQ packet: servo_id: " << (int)req_pkt.servo_id << " cmd: " << (int)req_pkt.command << " data("
+          log() << "REQ packet: servo_id: " << int(req_pkt.servo_id) << " cmd: " << int(req_pkt.command) << " data("
                 << req_pkt.data.size() << "): ";
           for (auto c = req_pkt.data.begin(); c != req_pkt.data.end(); c++)
-            log() << (int)*c << " ";
+            log() << int(*c) << " ";
           log() << resetfmt << endlog();
         }
       }
@@ -254,15 +259,15 @@ void HerkulexSched::updateHook()
       if (poll_round_size < 0)
       { // attempt poll all servos in one round
         poll_index = 0;
-        poll_end_index = poll_list.size();
+        poll_end_index = poll_list_size;
       }
       else
       { // poll only poll_round_size servos in current round and preserve poll_index
-        if (poll_index >= poll_list.size())
+        if (poll_index >= poll_list_size)
           poll_index = 0; // end of poll list
         poll_end_index = poll_index + poll_round_size;
-        if (poll_end_index > poll_list.size())
-          poll_end_index = poll_list.size();
+        if (poll_end_index > poll_list_size)
+          poll_end_index = poll_list_size;
       }
       clearPortBuffers();
 
@@ -271,7 +276,7 @@ void HerkulexSched::updateHook()
         waitSendPacketDL();
       }
 #ifdef SCHED_STATISTICS
-      statistics.rt_jog_send_duration = time_service->secondsSince(statistics_sync_timestamp);
+      statistics.rt_jog_send_duration = float(time_service->secondsSince(statistics_sync_timestamp));
 #endif /* SCHED_STATISTICS */
 
       sched_state = SEND_JOG_WAIT;
@@ -299,7 +304,7 @@ void HerkulexSched::updateHook()
     sched_state = SEND_READ_REQ;
     timer.arm(ROUND_TIMER, period_RT_read);
 #ifdef SCHED_STATISTICS
-    statistics.rt_read_start_time = time_service->secondsSince(statistics_sync_timestamp);
+    statistics.rt_read_start_time = float(time_service->secondsSince(statistics_sync_timestamp));
 #endif /* SCHED_STATISTICS */
 
     // check sendPacketDL operation result: possible deadlock detection
@@ -308,6 +313,7 @@ void HerkulexSched::updateHook()
       if (result != SendSuccess)
         log(WARN) << "sendPacketDL() operation failed (JOG). SendStatus: " << result << endlog();
     }
+    break;
 
   case SEND_READ_REQ:
 
@@ -324,7 +330,7 @@ void HerkulexSched::updateHook()
       states_port.write(states);
 
 #ifdef SCHED_STATISTICS
-      statistics.cm_start_time = time_service->secondsSince(statistics_sync_timestamp);
+      statistics.cm_start_time = float(time_service->secondsSince(statistics_sync_timestamp));
       statistics_port.write(statistics);
 #endif /* SCHED_STATISTICS */
 
@@ -361,10 +367,10 @@ void HerkulexSched::updateHook()
     if (log(DEBUG))
     {
       log() << std::dec << std::setw(2) << std::setfill('0');
-      log() << "REQ packet: servo_id: " << (int)req_pkt.servo_id << " cmd: " << (int)req_pkt.command << " data("
+      log() << "REQ packet: servo_id: " << int(req_pkt.servo_id) << " cmd: " << int(req_pkt.command) << " data("
             << req_pkt.data.size() << "): ";
       for (auto c = req_pkt.data.begin(); c != req_pkt.data.end(); c++)
-        log() << (int)*c << " ";
+        log() << int(*c) << " ";
       log() << resetfmt << endlog();
     }
 
@@ -412,10 +418,10 @@ void HerkulexSched::updateHook()
       if (success && log(DEBUG))
       {
         log() << std::dec << std::setw(2) << std::setfill('0');
-        log() << "ACK packet: servo_id: " << (int)ack_pkt->servo_id << " cmd: " << (int)ack_pkt->command << " data("
+        log() << "ACK packet: servo_id: " << int(ack_pkt->servo_id) << " cmd: " << int(ack_pkt->command) << " data("
               << ack_pkt->data.size() << "): ";
         for (auto c = ack_pkt->data.begin(); c != ack_pkt->data.end(); c++)
-          log() << (int)*c << " ";
+          log() << int(*c) << " ";
         log() << resetfmt << std::endl << "pos = " << pos << " vel = " << vel << endlog();
       }
       ack_buffer.Release(ack_pkt);
@@ -435,7 +441,7 @@ void HerkulexSched::updateHook()
           states.detail.push_back(status.detail);
         }
 #ifdef SCHED_STATISTICS
-        statistics.rt_read_req_durationN = timeout - timer.timeRemaining(REQUEST_TIMEOUT_TIMER);
+        statistics.rt_read_req_durationN = float(timeout - timer.timeRemaining(REQUEST_TIMEOUT_TIMER));
         if (statistics.rt_read_n_successes + statistics.rt_read_n_errors == 0)
         {
           statistics.rt_read_req_duration1 = statistics.rt_read_req_durationN;

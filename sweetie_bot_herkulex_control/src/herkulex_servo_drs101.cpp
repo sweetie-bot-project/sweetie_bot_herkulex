@@ -82,37 +82,37 @@ const std::vector<Register> HerkulexServoDRS101::registers_drs101 =
 
 const RegisterMapper HerkulexServoDRS101::register_mapper_drs101 = RegisterMapper(registers_drs101);
 
-HerkulexServoDRS101::HerkulexServoDRS101(const std::string& _name, unsigned int _hw_id, bool _reverse, int _offset,
-                                         double _scale)
+HerkulexServoDRS101::HerkulexServoDRS101(const std::string& _name, unsigned char _hw_id, bool _reverse,
+                                         unsigned int _offset, double _scale)
     : HerkulexServo(_name, register_mapper_drs101, _hw_id, _reverse, _offset, _scale){};
 
 double HerkulexServoDRS101::convertVelRawToRad(unsigned int raw) const
 {
-  double vel = scale * VEL_CONV_COEFF_RAW2RADS * (int16_t)raw;
+  double vel = scale * VEL_CONV_COEFF_RAW2RADS * short(raw);
   return reverse ? -vel : vel;
 };
 
 unsigned int HerkulexServoDRS101::convertVelRadToRaw(double vel) const
 {
   vel = reverse ? -vel : vel;
-  return vel / (scale * VEL_CONV_COEFF_RAW2RADS);
+  return u_int(round(vel / (scale * VEL_CONV_COEFF_RAW2RADS)));
 };
 
 double HerkulexServoDRS101::convertPosRawToRad(unsigned int raw) const
 {
-  double pos = scale * POS_CONV_COEFF_RAW2RAD * ((int)raw - offset);
+  double pos = scale * POS_CONV_COEFF_RAW2RAD * (unsigned(raw) - offset);
   return reverse ? -pos : pos;
 };
 
 unsigned int HerkulexServoDRS101::convertPosRadToRaw(double pos) const
 {
   pos = reverse ? -pos : pos;
-  return pos / (scale * POS_CONV_COEFF_RAW2RAD) + offset;
+  return u_int(round(pos / (scale * POS_CONV_COEFF_RAW2RAD) + offset));
 };
 
 double HerkulexServoDRS101::convertTimeRawToSec(unsigned int raw) const { return TIME_CONV_COEFF_RAW2SEC * raw; };
 
-unsigned int HerkulexServoDRS101::convertTimeSecToRaw(double time) const { return time / TIME_CONV_COEFF_RAW2SEC; };
+unsigned int HerkulexServoDRS101::convertTimeSecToRaw(double time) const { return u_int(round(time / TIME_CONV_COEFF_RAW2SEC)); };
 
 void HerkulexServoDRS101::reqPosVel(HerkulexPacket& req) const
 {
@@ -167,11 +167,9 @@ bool HerkulexServoDRS101::ackState(const HerkulexPacket& ack, State& state, Stat
     return false;
   state.pos = convertPosRawToRad(data[0]);
   state.vel = convertVelRawToRad(data[1]);
-  state.pwm = float(int16_t(data[2])) / 1023.0f;
+  state.pwm = double(int16_t(data[2]) / 1023.0f);
   state.pos_goal = convertPosRawToRad(data[4]);
-  ;
   state.pos_desired = convertPosRawToRad(data[5]);
-  ;
   state.vel_desired = convertVelRawToRad(data[6]);
   return true;
 }

@@ -20,7 +20,7 @@ typedef sweetie_bot_herkulex_msgs::HerkulexPacket HerkulexPacket;
 
 struct Register
 {
-  signed char reg_num; // acording to manual
+  unsigned char reg_num; // acording to manual
   std::string name;
   signed char eep_addr;
   signed char ram_addr;
@@ -38,8 +38,8 @@ public:
 
 protected:
   std::unordered_map<std::string, const Register*> name_map;
-  std::unordered_map<unsigned int, const Register*> eep_map;
-  std::unordered_map<unsigned int, const Register*> ram_map;
+  std::unordered_map<unsigned char, const Register*> eep_map;
+  std::unordered_map<unsigned char, const Register*> ram_map;
 
 public:
   RegisterMapper(const std::vector<Register>& regs);
@@ -52,8 +52,8 @@ public:
     return *(reg->second);
   }
   const Register& getByNum(unsigned int num) const { return registers.at(num); }
-  const Register& getByEEPadr(unsigned int eep_adr) const { return *eep_map.at(eep_adr); }
-  const Register& getByRAMadr(unsigned int ram_adr) const { return *ram_map.at(ram_adr); }
+  const Register& getByEEPadr(unsigned char eep_adr) const { return *eep_map.at(eep_adr); }
+  const Register& getByRAMadr(unsigned char ram_adr) const { return *ram_map.at(ram_adr); }
 
   const Register* findByName(const std::string& name) const
   {
@@ -67,12 +67,12 @@ public:
     else
       return nullptr;
   }
-  const Register* findByEEPaddr(unsigned int eep_adr) const
+  const Register* findByEEPaddr(unsigned char eep_adr) const
   {
     auto reg = eep_map.find(eep_adr);
     return (reg != eep_map.end()) ? reg->second : nullptr;
   }
-  const Register* findByRAMaddr(unsigned int ram_adr) const
+  const Register* findByRAMaddr(unsigned char ram_adr) const
   {
     auto reg = ram_map.find(ram_adr);
     return (reg != ram_map.end()) ? reg->second : nullptr;
@@ -105,8 +105,8 @@ struct Status
   unsigned char detail;
 
   Status() {}
-  Status(unsigned int flags) : error(flags & 0xFF), detail((flags >> 8) & 0xFF) {}
-  operator unsigned int() const { return (unsigned int)error + ((unsigned int)detail) << 8; }
+  Status(unsigned short flags) : error(flags & 0xFF), detail((flags >> 8) & 0xFF) {}
+  operator unsigned short() const { return uint16_t(error + (detail << 8)); }
 
   enum detail_flag
   {
@@ -165,9 +165,9 @@ public:
 
 protected:
   std::string name;
-  unsigned int hw_id;
+  unsigned char hw_id;
   bool reverse;
-  int offset;
+  unsigned int offset;
   double scale;
 
 public:
@@ -179,7 +179,8 @@ protected:
   bool ackStatReturn_impl(const HerkulexPacket& ack, Status& status) const;
 
 public:
-  HerkulexServo(const std::string& _name, const RegisterMapper& mapper, unsigned int _hw_id, bool _reverse, int _offset,
+  virtual ~HerkulexServo() {}
+  HerkulexServo(const std::string& _name, const RegisterMapper& mapper, unsigned char _hw_id, bool _reverse, unsigned int _offset,
                 double _scale = 1.0);
 
   // data fields access
@@ -187,7 +188,7 @@ public:
   unsigned int getID() const { return hw_id; }
   bool isReverse() const { return reverse; }
   bool getOffset() const { return offset; }
-  bool getScale() const { return scale; }
+  double getScale() const { return scale; }
 
   // Request packets generations.
   void reqRead_ram(HerkulexPacket& req, const std::string& reg) const;
@@ -201,8 +202,8 @@ public:
 
   // JOG command generation
   void reqIJOGheader(HerkulexPacket& req) const;
-  void insertIJOGdata(HerkulexPacket& req, JOGMode mode, unsigned int goal, unsigned int playtime) const;
-  void reqSJOGheader(HerkulexPacket& req, unsigned int playtime) const;
+  void insertIJOGdata(HerkulexPacket& req, JOGMode mode, unsigned int goal, unsigned char playtime) const;
+  void reqSJOGheader(HerkulexPacket& req, unsigned char playtime) const;
   void insertSJOGdata(HerkulexPacket& req, JOGMode mode, unsigned int goal) const;
 
   // Acknowelege packets parse functions.
