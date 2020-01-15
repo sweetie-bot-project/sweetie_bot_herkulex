@@ -272,10 +272,10 @@ bool HerkulexArray::configureHook()
     }
 
     std::string servo_name = servo_prop.getName();
-    Property<unsigned char> servo_id_prop = servo_prop.rvalue().getProperty("servo_id");
+    Property<unsigned int> servo_id_prop = servo_prop.rvalue().getProperty("servo_id");
     if (!servo_id_prop.ready())
     {
-      log(ERROR) << "Incorrect servos structure: servo_id must be uint8." << endlog();
+      log(ERROR) << "Incorrect servos structure: servo_id must be ulong." << endlog();
       return false;
     }
     /*Property<std::string> servo_model_prop = servo_prop.rvalue().getProperty("servo_model");
@@ -292,7 +292,7 @@ bool HerkulexArray::configureHook()
     Property<unsigned int> offset_prop = servo_prop.rvalue().getProperty("offset");
     if (!offset_prop.ready())
     {
-      log(ERROR) << "Incorrect servos structure: offset must be int16." << endlog();
+      log(ERROR) << "Incorrect servos structure: offset must be ulong." << endlog();
       return false;
     }
 
@@ -310,7 +310,7 @@ log(ERROR) << "Incorrect servos structure: unknown servo model: " << servo_model
 drs101, drs202." << endlog(); return false;
     }*/
     std::shared_ptr<servo::HerkulexServo> servo(new servo::HerkulexServoDRS101(
-        servo_name, servo_id_prop.rvalue(), reverse_prop.rvalue(), offset_prop.rvalue(), scale));
+        servo_name, u_char(servo_id_prop.rvalue()), reverse_prop.rvalue(), offset_prop.rvalue(), scale));
     log(INFO) << "Add servo name = " << servo->getName() << " servo_id = " << servo->getID()
               << " offset = " << offset_prop.rvalue() << " scale = " << scale << endlog();
     if (!addServo(servo))
@@ -513,7 +513,7 @@ bool HerkulexArray::setRegisterEEP(const std::string& servo, const std::string& 
   }
 }
 
-bool HerkulexArray::setGoalRaw(const std::string& servo, unsigned char mode, unsigned int goal, unsigned int playtime)
+bool HerkulexArray::setGoalRaw(const std::string& servo, unsigned char mode, unsigned int goal, unsigned char playtime)
 {
   try
   {

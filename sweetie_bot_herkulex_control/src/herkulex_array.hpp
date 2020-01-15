@@ -103,7 +103,7 @@ protected:
 		unsigned int getRegisterEEP(const std::string& servo, const std::string& reg);
 		bool setRegisterEEP(const std::string& servo, const std::string& reg, unsigned int val);
 
-    bool setGoalRaw(const std::string& servo, unsigned char mode, unsigned int goal, unsigned int playtime);
+    bool setGoalRaw(const std::string& servo, unsigned char mode, unsigned int goal, unsigned char playtime);
     bool setGoal(const std::string& servo, unsigned char mode, double goal, double playtime);
 
 		unsigned int getStatus(const std::string& servo);

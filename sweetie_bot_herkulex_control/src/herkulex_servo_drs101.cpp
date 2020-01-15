@@ -112,7 +112,7 @@ unsigned int HerkulexServoDRS101::convertPosRadToRaw(double pos) const
 
 double HerkulexServoDRS101::convertTimeRawToSec(unsigned int raw) const { return TIME_CONV_COEFF_RAW2SEC * raw; };
 
-unsigned int HerkulexServoDRS101::convertTimeSecToRaw(double time) const { return u_int(round(time / TIME_CONV_COEFF_RAW2SEC)); };
+unsigned char HerkulexServoDRS101::convertTimeSecToRaw(double time) const { return u_char(round(time / TIME_CONV_COEFF_RAW2SEC)); };
 
 void HerkulexServoDRS101::reqPosVel(HerkulexPacket& req) const
 {

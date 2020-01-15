@@ -393,7 +393,7 @@ void HerkulexDriver::sendPacketDL(const HerkulexPacket& pkt)
 
   if (log(DEBUG))
   {
-    log() << "WRITE on serial port (" << pkt_size << " bytes):" << std::dec << std::setw(2) << std::setfill('0');
+    log() << "WRITE on serial port (" << unsigned(pkt_size) << " bytes):" << std::hex << std::setw(2) << std::setfill('0');
     for (int i = 0; i < pkt_size; i++)
       log(DEBUG) << unsigned(buffer[i]) << " ";
     log() << resetfmt << endlog();

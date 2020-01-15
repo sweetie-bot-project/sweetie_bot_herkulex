@@ -307,7 +307,7 @@ public:
   virtual double convertPosRawToRad(unsigned int raw) const = 0;
   virtual unsigned int convertPosRadToRaw(double pos) const = 0;
   virtual double convertTimeRawToSec(unsigned int raw) const = 0;
-  virtual unsigned int convertTimeSecToRaw(double pos) const = 0;
+  virtual unsigned char convertTimeSecToRaw(double pos) const = 0;
 
   virtual void reqPosVel(HerkulexPacket& req) const = 0;
   virtual bool ackPosVel(const HerkulexPacket& ack, double& pos, double& vel, Status& status) const = 0;
