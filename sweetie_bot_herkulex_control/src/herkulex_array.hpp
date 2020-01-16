@@ -13,7 +13,7 @@
 
 #include <sensor_msgs/typekit/JointState.h>
 #include <sweetie_bot_herkulex_msgs/typekit/HerkulexPacket.h>
-#include <sweetie_bot_herkulex_msgs/typekit/HerkulexServoState.h>
+#include <sweetie_bot_herkulex_msgs/typekit/HerkulexJointState.h>
 #include <sweetie_bot_herkulex_msgs/typekit/ServoGoal.h>
 
 #include "herkulex_servo.hpp"
@@ -26,7 +26,7 @@ class HerkulexArray : public RTT::TaskContext
 {
 	public:
 		typedef sweetie_bot_herkulex_msgs::HerkulexPacket HerkulexPacket;
-		typedef sweetie_bot_herkulex_msgs::HerkulexServoState HerkulexServoState;
+		typedef sweetie_bot_herkulex_msgs::HerkulexJointState HerkulexJointState;
 		typedef sweetie_bot_herkulex_msgs::ServoGoal ServoGoal;
 
 	protected:
@@ -128,7 +128,7 @@ class HerkulexArray : public RTT::TaskContext
 		bool reqPosVel(HerkulexPacket& req, const std::string& servo);
 		bool ackPosVel(const HerkulexPacket& ack, const std::string& servo, double& pos, double& vel, servo::Status& status);
 		bool reqState(HerkulexPacket& req, const std::string& servo);
-		bool ackState(const HerkulexPacket& ack, const std::string& servo, HerkulexServoState& state, servo::Status& status);
+		bool ackState(const HerkulexPacket& ack, const std::string& servo, HerkulexJointState& state, servo::Status& status);
 
 	protected:
 		// interrupt waiting

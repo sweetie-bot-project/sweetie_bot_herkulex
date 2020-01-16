@@ -134,8 +134,8 @@ bool HerkulexSched::configureHook()
 	states.name.resize(poll_list.size());
 	states.pos.resize(poll_list.size());
 	states.vel.resize(poll_list.size());
-	states.error.resize(poll_list.size());
-	states.detail.resize(poll_list.size());
+	states.status_error.resize(poll_list.size());
+	states.status_detail.resize(poll_list.size());
 
 	if (detailed_state) {
 		states.pwm.resize(poll_list.size());
@@ -161,8 +161,8 @@ void HerkulexSched::clearPortBuffers() {
 	states.name.clear();
 	states.pos.clear();
 	states.vel.clear();
-	states.error.clear();
-	states.detail.clear();
+	states.status_error.clear();
+	states.status_detail.clear();
 
 	//if (detailed_state) {
 	states.pwm.clear();
@@ -397,8 +397,8 @@ void HerkulexSched::updateHook()
 						states.name.push_back(poll_list[poll_index]);
 						states.pos.push_back(pos);
 						states.vel.push_back(vel);
-						states.error.push_back(status.error);
-						states.detail.push_back(status.detail);
+						states.status_error.push_back(status.error);
+						states.status_detail.push_back(status.detail);
 					}
 #ifdef SCHED_STATISTICS
 					statistics.rt_read_req_durationN = timeout - timer.timeRemaining(REQUEST_TIMEOUT_TIMER);

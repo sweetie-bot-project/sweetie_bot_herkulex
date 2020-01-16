@@ -47,8 +47,8 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
   FILES
   HerkulexPacket.msg
-  HerkulexPacket.msg
-  HerkulexServoState.msg
+  HerkulexState.msg
+  HerkulexJointState.msg
   HerkulexSchedStatistics.msg
   ServoGoal.msg
   Status.msg

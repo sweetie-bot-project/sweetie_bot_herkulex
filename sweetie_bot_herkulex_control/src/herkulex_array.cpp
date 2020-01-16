@@ -215,7 +215,7 @@ HerkulexArray::HerkulexArray(std::string const& name) :
 		.doc("Decode extended state query (position, velocite, pwm, target, desired position and speed), cause exeception on failure, return false on invalid packet.")
 		.arg("ack", "Reference to received packet (HerkulexPacket).")
 		.arg("servo", "Servo name.")
-		.arg("state", "Reference to HerkulexServoState msg, if query has succed extended servo state will be pushed back.")
+		.arg("state", "Reference to HerkulexJointState msg, if query has succed extended servo state will be pushed back.")
 		.arg("status", "Servo status (byte0=status_error, byte1=status_detail).");
 }
 
@@ -923,7 +923,7 @@ bool HerkulexArray::reqState(HerkulexPacket& req, const std::string& servo)
 	return true;
 }
 
-bool HerkulexArray::ackState(const HerkulexPacket& ack, const std::string& servo, HerkulexServoState& state_array, servo::Status& _status) 
+bool HerkulexArray::ackState(const HerkulexPacket& ack, const std::string& servo, HerkulexJointState& state_array, servo::Status& _status)
 {
 	if (!this->isConfigured()) return false;
 	servo::Status status;
@@ -938,8 +938,8 @@ bool HerkulexArray::ackState(const HerkulexPacket& ack, const std::string& servo
 		state_array.pos_goal.push_back(state.pos_goal);
 		state_array.pos_desired.push_back(state.pos_desired);
 		state_array.vel_desired.push_back(state.vel_desired);
-		state_array.error.push_back(_status.error);
-		state_array.detail.push_back(_status.detail);
+		state_array.status_error.push_back(_status.error);
+		state_array.status_detail.push_back(_status.detail);
 	}
 	return success;
 }
