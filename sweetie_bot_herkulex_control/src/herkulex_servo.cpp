@@ -1,5 +1,5 @@
-#include <stdexcept>
 #include "herkulex_servo.hpp"
+#include <stdexcept>
 
 namespace herkulex {
 
@@ -144,7 +144,6 @@ bool HerkulexServo::ackRead_impl(const HerkulexPacket& ack, unsigned int reg_num
 				break;
 			default:
 				throw std::domain_error("HerkulexServo::ackRead: incompatible servo register size.");
-				break;
 		}
 	}
 	if (index != ack.data.size() - 2) return false;

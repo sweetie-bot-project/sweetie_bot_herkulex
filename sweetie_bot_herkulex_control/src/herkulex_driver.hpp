@@ -37,7 +37,7 @@ class HerkulexDriver : public RTT::TaskContext
 		unsigned char recv_pkt_size;
 		unsigned char recv_pkt_checksum1;
 
-	    // COMPONENT INTERFACE
+	// COMPONENT INTERFACE
 	protected:
 		// Properties
 		std::string port_name_prop;
