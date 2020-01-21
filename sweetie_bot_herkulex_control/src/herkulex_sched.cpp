@@ -470,7 +470,7 @@ void HerkulexSched::updateHook()
 			}
 			if (!cm_req_buffer.empty()) {
 				HerkulexPacket * cm_req_pkt = cm_req_buffer.PopWithoutRelease();
-				sendPacketDL(*cm_req_pkt);
+				sendPacketDL.send(*cm_req_pkt);
 				cm_req_buffer.Release(cm_req_pkt);
 				if (!cm_req_buffer.empty()) this->trigger();
 			}
