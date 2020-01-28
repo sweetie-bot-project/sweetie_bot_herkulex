@@ -16,8 +16,8 @@ herk_driver.baudrate = 115200;
 
 loadComponent("herk_sched","herkulex::HerkulexSched");
 herk_sched.poll_list = strings("servo1", "servo2");
-# herk_sched.poll_round_size = 1;
-herk_sched.detailed_state = false;
+herk_sched.poll_round_size = 1;
+herk_sched.detailed_state = true;
 
 # CONNECT OPERATIONS OF HERKULEX_* subsystem
 
@@ -35,21 +35,21 @@ stream("herk_sched.out_states", ros.comm.topic("/herkulex/joint_states"))
 # TIME PERIODS CONFIGURATION
 
 # How long should scheduler wait for response during RT operations?
-herk_sched.timeout = 0.006;
+herk_sched.timeout = 0.010;
 # Scheduler has 2 ms to send JOG packets. Actual exchange may last longer. 
 # Beware situation where JOG send eats up time of next request operation.
-herk_sched.period_RT_JOG = 0.003;
+herk_sched.period_RT_JOG = 0.005;
 # Scheduler has 10 ms to send RT read request. Actual exchange may last for (period_RT + timeout).
-herk_sched.period_RT_read = 0.012;
+herk_sched.period_RT_read = 0.001;
 # Scheduler has 2 ms to forward request packets from CM interface to HerkulexDriver.
 # Actual exchange may lasts until begining of RT_JOG round (period-(period_RT+timeout).
-herk_sched.period_CM = 0.002; 
+herk_sched.period_CM = 0.001;
 # Main discretization period (control cycle).
 # To prevent possible ACK packet clashes 
 # it must be larger then (period_RT + timeout + period_CM + timeout).
-var double TIMER_PERIOD = 0.028;
+var double TIMER_PERIOD = 0.023;
 # HerkulexArray timeout must be large then control cycle.
-herk_array.timeout = 0.06; 
+herk_array.timeout = 0.05;
 # HerkulexArray detailed state message
 herk_array.detailed_state = true;
 
@@ -58,7 +58,8 @@ herk_array.detailed_state = true;
 loadComponent("herk_timer", "OCL::TimerComponent");
 # timer_0 notifies herkulex_sched about begining of contril cycle.
 connect("herk_timer.timer_0", "herk_sched.sync", ConnPolicy());
-connect("herk_timer.timer_0", "herk_array.sync", ConnPolicy());
+herk_array.setPeriod(0.056);
+
 herk_timer.startTimer(0, TIMER_PERIOD); 
 # timer_1 notifies file reader. It has 50% period shift to prevent races.
 herk_timer.wait(1, TIMER_PERIOD/2);

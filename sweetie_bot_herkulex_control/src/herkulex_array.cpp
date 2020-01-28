@@ -1107,7 +1107,7 @@ void HerkulexArray::updateHook()
 {
 	log(DEBUG) << "HerkulexArray updateHook!" << endlog();
 	RTT::os::Timer::TimerId timer_id;
-	if (sync_port.read(timer_id) == NewData)
+	//if (sync_port.read(timer_id) == NewData)
 	{
 		servo::HerkulexServo * s = monitor_iter->second.get();
 
