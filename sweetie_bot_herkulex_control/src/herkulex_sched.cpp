@@ -20,10 +20,20 @@ HerkulexSched::HerkulexSched(std::string const& name) :
 	sendPacketDL("sendPacketDL", this->engine()),
 	waitSendPacketDL("waitSendPacketDL", this->engine()),
 	reqIJOG("reqIJOG"),
+	//*
+	reqStatus("reqStatus"),
+	ackStatus("ackStatus"),
+	// */
+	//*
+	reqStatusExtended("reqStatusExtended"),
+	ackStatusExtended("ackStatusExtended"),
+	// */
+	//*
 	reqPosVel("reqPosVel"),
 	ackPosVel("ackPosVel"),
-	reqState("reqState"),
-	ackState("ackState"),
+	reqPosVelExtended("reqPosVelExtended"),
+	ackPosVelExtended("ackPosVelExtended"),
+	// */
 	cm_req_buffer(10, HerkulexPacket(), true),
 	ack_buffer(10, HerkulexPacket(), true),
 	timer(this),
@@ -103,10 +113,18 @@ HerkulexSched::HerkulexSched(std::string const& name) :
 
 	// Protocol
 	this->requires("protocol")->addOperationCaller(reqIJOG);
+	this->requires("protocol")->addOperationCaller(reqStatus);
+	this->requires("protocol")->addOperationCaller(ackStatus);
+	//*
+	this->requires("protocol")->addOperationCaller(reqStatusExtended);
+	this->requires("protocol")->addOperationCaller(ackStatusExtended);
+	// */
+	//*
 	this->requires("protocol")->addOperationCaller(reqPosVel);
 	this->requires("protocol")->addOperationCaller(ackPosVel);
-	this->requires("protocol")->addOperationCaller(reqState);
-	this->requires("protocol")->addOperationCaller(ackState);
+	this->requires("protocol")->addOperationCaller(reqPosVelExtended);
+	this->requires("protocol")->addOperationCaller(ackPosVelExtended);
+	// */
 }
 
 bool HerkulexSched::configureHook()
@@ -134,8 +152,8 @@ bool HerkulexSched::configureHook()
 	states.name.resize(poll_list.size());
 	states.pos.resize(poll_list.size());
 	states.vel.resize(poll_list.size());
-	states.error.resize(poll_list.size());
-	states.detail.resize(poll_list.size());
+	states.status_error.resize(poll_list.size());
+	states.status_detail.resize(poll_list.size());
 
 	if (detailed_state) {
 		states.pwm.resize(poll_list.size());
@@ -161,8 +179,9 @@ void HerkulexSched::clearPortBuffers() {
 	states.name.clear();
 	states.pos.clear();
 	states.vel.clear();
-	states.error.clear();
-	states.detail.clear();
+	states.status_error.clear();
+	states.status_detail.clear();
+	states.not_responding.clear();
 
 	//if (detailed_state) {
 	states.pwm.clear();
@@ -325,7 +344,7 @@ void HerkulexSched::updateHook()
 				success = reqPosVel(req_pkt, poll_list[poll_index]);
 			}
 			else {
-				success = reqState(req_pkt, poll_list[poll_index]);
+				success = reqPosVelExtended(req_pkt, poll_list[poll_index]);
 			}
 			if (!success) {
 				// skip servo
@@ -376,7 +395,7 @@ void HerkulexSched::updateHook()
 					success = ackPosVel(*ack_pkt, poll_list[poll_index], pos, vel, status);
 				}
 				else {
-					success = ackState(*ack_pkt, poll_list[poll_index], states, status) ;
+					success = ackPosVelExtended(*ack_pkt, poll_list[poll_index], states, status) ;
 					pos = states.pos.back();
 					vel = states.vel.back();
 				}
@@ -397,8 +416,8 @@ void HerkulexSched::updateHook()
 						states.name.push_back(poll_list[poll_index]);
 						states.pos.push_back(pos);
 						states.vel.push_back(vel);
-						states.error.push_back(status.error);
-						states.detail.push_back(status.detail);
+						states.status_error.push_back(status.error);
+						states.status_detail.push_back(status.detail);
 					}
 #ifdef SCHED_STATISTICS
 					statistics.rt_read_req_durationN = timeout - timer.timeRemaining(REQUEST_TIMEOUT_TIMER);
@@ -451,7 +470,7 @@ void HerkulexSched::updateHook()
 			}
 			if (!cm_req_buffer.empty()) {
 				HerkulexPacket * cm_req_pkt = cm_req_buffer.PopWithoutRelease();
-				sendPacketDL(*cm_req_pkt);
+				sendPacketDL.send(*cm_req_pkt);
 				cm_req_buffer.Release(cm_req_pkt);
 				if (!cm_req_buffer.empty()) this->trigger();
 			}

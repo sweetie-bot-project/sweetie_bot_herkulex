@@ -261,16 +261,28 @@ namespace servo {
 			virtual double convertTimeRawToSec(unsigned int raw) const = 0;
 			virtual unsigned int convertTimeSecToRaw(double pos) const = 0;
 
+			virtual bool ackStatus(const HerkulexPacket& ack, double& temperature, Status& status) const = 0;
+			virtual void reqStatus(HerkulexPacket& req) const = 0;
+			AckCallback ackCallbackStatus(double& temperature, Status& status) const {
+				return boost::bind(&HerkulexServo::ackStatus, this, _1, boost::ref(temperature), boost::ref(status));
+			}
+
+			virtual void reqStatusExtended(HerkulexPacket& req) const = 0;
+			virtual bool ackStatusExtended(const HerkulexPacket& ack, unsigned char& torque_control, unsigned char& led_control, double& voltage, double& temperature, Status& status) const = 0;
+			AckCallback ackCallbackStatusExtended(unsigned char& torque_control, unsigned char& led_control, double& voltage, double& temperature, Status& status) const {
+				return boost::bind(&HerkulexServo::ackStatusExtended, this, _1,  boost::ref(torque_control), boost::ref(led_control), boost::ref(voltage), boost::ref(temperature), boost::ref(status));
+			}
+
 			virtual void reqPosVel(HerkulexPacket& req) const = 0;
 			virtual bool ackPosVel(const HerkulexPacket& ack, double& pos, double& vel, Status& status) const = 0;
 			AckCallback ackCallbackPosVel(double& pos, double& vel, Status& status) const {
 				return boost::bind(&HerkulexServo::ackPosVel, this, _1, boost::ref(pos), boost::ref(vel), boost::ref(status));
 			}
 
-			virtual void reqState(HerkulexPacket& req) const = 0;
-			virtual bool ackState(const HerkulexPacket& ack, State& state, Status& status) const = 0;
-			AckCallback ackCallbackState(State& state, Status& status) const {
-				return boost::bind(&HerkulexServo::ackState, this, _1, boost::ref(state), boost::ref(status));
+			virtual void reqPosVelExtended(HerkulexPacket& req) const = 0;
+			virtual bool ackPosVelExtended(const HerkulexPacket& ack, State& state, Status& status) const = 0;
+			AckCallback ackCallbackackPosVelExtended(State& state, Status& status) const {
+				return boost::bind(&HerkulexServo::ackPosVelExtended, this, _1, boost::ref(state), boost::ref(status));
 			}
 	};
 

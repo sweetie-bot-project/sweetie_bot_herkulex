@@ -13,7 +13,8 @@
 
 #include <sensor_msgs/typekit/JointState.h>
 #include <sweetie_bot_herkulex_msgs/typekit/HerkulexPacket.h>
-#include <sweetie_bot_herkulex_msgs/typekit/HerkulexServoState.h>
+#include <sweetie_bot_herkulex_msgs/typekit/HerkulexJointState.h>
+#include <sweetie_bot_herkulex_msgs/typekit/HerkulexState.h>
 #include <sweetie_bot_herkulex_msgs/typekit/ServoGoal.h>
 
 #include "herkulex_servo.hpp"
@@ -26,7 +27,8 @@ class HerkulexArray : public RTT::TaskContext
 {
 	public:
 		typedef sweetie_bot_herkulex_msgs::HerkulexPacket HerkulexPacket;
-		typedef sweetie_bot_herkulex_msgs::HerkulexServoState HerkulexServoState;
+		typedef sweetie_bot_herkulex_msgs::HerkulexJointState HerkulexJointState;
+		typedef sweetie_bot_herkulex_msgs::HerkulexState HerkulexState;
 		typedef sweetie_bot_herkulex_msgs::ServoGoal ServoGoal;
 
 	protected:
@@ -59,10 +61,12 @@ class HerkulexArray : public RTT::TaskContext
 #endif
 		// cached servo configuration
 		servo::HerkulexServoArray servos; /**< Servo sructures */
+		servo::HerkulexServoArray::const_iterator monitor_iter;
 		std::map< std::string, std::shared_ptr<herkulex::servo::RegisterValues> > servos_init; /**< Registers initializeted on startup. */
 		std::shared_ptr<herkulex::servo::HerkulexServo> broadcast; /**< Fictive servo with broadcast ID. */
 		std::shared_ptr<herkulex::servo::RegisterValues> broadcast_init; /**< Global servo configuration. */
 		// port buffer
+		RTT::InputPort<RTT::os::Timer::TimerId> sync_port;
 		sensor_msgs::JointState joints;
 		// packet buffers
 		HerkulexPacket req_pkt;
@@ -70,6 +74,7 @@ class HerkulexArray : public RTT::TaskContext
 		RTT::os::Mutex ack_mutex;
 		RTT::os::Condition ack_cond;
 		TimeoutTimer timeout_timer;
+		HerkulexState state;
 		const TimeoutTimer::TimerId TIMEOUT_TIMER_ID = 0;
 		// internals
 		bool break_loop_flag;
@@ -82,10 +87,12 @@ class HerkulexArray : public RTT::TaskContext
 		double timeout_prop;
 		bool mass_reset_prop;
 		double reset_delay_prop;
+		bool detailed_state;
 
 	protected:
 		// PORTS
 		RTT::OutputPort<sensor_msgs::JointState> joints_port;
+		RTT::OutputPort<HerkulexState> states_port;
 		// OPERATIONS: PROVIDED (low level interface)
 		void receivePacketCM(const HerkulexPacket& pkt);
 		// OPERATIONS: REQUIRED (low level interface)
@@ -125,10 +132,14 @@ class HerkulexArray : public RTT::TaskContext
 
 		// OPERATIONS: PROVIDED (protocol interface)
 		bool reqIJOG(HerkulexPacket& req, const ServoGoal& goal);
+		bool reqStatus(HerkulexPacket& req, const std::string& servo);
+		bool ackStatus(const HerkulexPacket& ack, const std::string& servo, double& temperature, servo::Status& status);
+		bool reqStatusExtended(HerkulexPacket& req, const std::string& servo);
+		bool ackStatusExtended(const HerkulexPacket& ack, const std::string& servo, HerkulexState& state, servo::Status& status);
 		bool reqPosVel(HerkulexPacket& req, const std::string& servo);
 		bool ackPosVel(const HerkulexPacket& ack, const std::string& servo, double& pos, double& vel, servo::Status& status);
-		bool reqState(HerkulexPacket& req, const std::string& servo);
-		bool ackState(const HerkulexPacket& ack, const std::string& servo, HerkulexServoState& state, servo::Status& status);
+		bool reqPosVelExtended(HerkulexPacket& req, const std::string& servo);
+		bool ackPosVelExtended(const HerkulexPacket& ack, const std::string& servo, HerkulexJointState& state, servo::Status& status);
 
 	protected:
 		// interrupt waiting
@@ -136,6 +147,7 @@ class HerkulexArray : public RTT::TaskContext
 		// Asyncronous and Syncronous package exchange with servo array.
 		void sendPacket(const HerkulexPacket& req);
 		bool sendRequest(const HerkulexPacket&, servo::HerkulexServo::AckCallback);
+		bool sendRequest(const HerkulexPacket&, servo::HerkulexServo::AckCallback, unsigned char tryouts);
 		// Helper fuctions
 		std::string statusToString(servo::Status status) ;
 		bool setServoRegisters(const servo::HerkulexServo * s, const servo::RegisterValues * reg_init);

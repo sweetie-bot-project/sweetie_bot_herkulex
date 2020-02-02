@@ -191,8 +191,9 @@ void HerkulexDriver::updateHook()
 		buffer_index = 0;
 
 		if (log(DEBUG)) {
-			log() << "READ on serial port (" << buffer_size << " bytes):" << std::dec << std::setw(2) << std::setfill('0');
-			for (int i = 0; i < buffer_size; i++) log(DEBUG) << (unsigned int) buffer[i] << " ";
+			log() << "READ on serial port (" << buffer_size << " bytes): ";
+			for (int i = 0; i < buffer_size; i++)
+				log() << std::setfill('0') << std::setw(2) << std::right << std::hex << unsigned(buffer[i]) << " ";
 			log() << resetfmt << std::endl << "STATE = " << recv_state << endlog();
 		}
 
@@ -356,8 +357,9 @@ void HerkulexDriver::sendPacketDL(const HerkulexPacket& pkt)
 	recv_state = HEADER1;
 
 	if (log(DEBUG)) {
-		log() << "WRITE on serial port (" << pkt_size << " bytes):" << std::dec << std::setw(2) << std::setfill('0');
-		for (int i = 0; i < pkt_size; i++) log(DEBUG) << (unsigned int) buffer[i] << " ";
+		log() << "WRITE on serial port (" << pkt_size << " bytes): ";
+		for (int i = 0; i < pkt_size; i++)
+			log() << std::setfill('0') << std::setw(2) << std::right << std::hex << unsigned(buffer[i]) << " ";
 		log() << resetfmt << endlog();
 	}
 

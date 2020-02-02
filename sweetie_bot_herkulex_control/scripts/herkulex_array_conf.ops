@@ -22,6 +22,9 @@ herk_driver.baudrate = 115200;
 
 connectOperations("herk_array.sendPacketCM", "herk_driver.sendPacket");
 connectOperations("herk_driver.receivePacket", "herk_array.receivePacketCM");
+stream("herk_array.out_states", ros.comm.topic("/herkulex/servo_states"))
+
+herk_array.detailed_state = true;
 
 # START HERKULEX_* SUBSYSTEM (without scheduler)
 

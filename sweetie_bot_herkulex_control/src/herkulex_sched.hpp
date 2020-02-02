@@ -10,7 +10,8 @@
 
 #include <sensor_msgs/typekit/JointState.h>
 #include <sweetie_bot_herkulex_msgs/typekit/HerkulexPacket.h>
-#include <sweetie_bot_herkulex_msgs/typekit/HerkulexServoState.h>
+#include <sweetie_bot_herkulex_msgs/typekit/HerkulexState.h>
+#include <sweetie_bot_herkulex_msgs/typekit/HerkulexJointState.h>
 #include <sweetie_bot_herkulex_msgs/typekit/HerkulexSchedStatistics.h>
 #include <sweetie_bot_herkulex_msgs/typekit/ServoGoal.h>
 
@@ -30,7 +31,8 @@ class HerkulexSched : public RTT::TaskContext
 		};
 
 		typedef sweetie_bot_herkulex_msgs::HerkulexPacket HerkulexPacket;
-		typedef sweetie_bot_herkulex_msgs::HerkulexServoState HerkulexServoState;
+		typedef sweetie_bot_herkulex_msgs::HerkulexState HerkulexState;
+		typedef sweetie_bot_herkulex_msgs::HerkulexJointState HerkulexJointState;
 		typedef sweetie_bot_herkulex_msgs::HerkulexSchedStatistics HerkulexSchedStatistics;
 		typedef sweetie_bot_herkulex_msgs::ServoGoal ServoGoal;
 
@@ -64,7 +66,7 @@ class HerkulexSched : public RTT::TaskContext
 		HerkulexPacket req_pkt;
 		// data port buffers
 		sensor_msgs::JointState joints;
-		HerkulexServoState states;
+		HerkulexJointState states;
 		ServoGoal goals;
 		// timer
 		SchedTimer timer;
@@ -74,13 +76,13 @@ class HerkulexSched : public RTT::TaskContext
 		RTT::os::TimeService::ticks statistics_sync_timestamp;
 #endif /* SCHED_STATISTICS */
 
-	    // COMPONENT INTERFACE
+	// COMPONENT INTERFACE
 	protected:
 		// Ports
 		RTT::InputPort<RTT::os::Timer::TimerId> sync_port;
 		RTT::InputPort<ServoGoal> goals_port;
 		RTT::OutputPort<sensor_msgs::JointState> joints_port;
-		RTT::OutputPort<HerkulexServoState> states_port;
+		RTT::OutputPort<HerkulexJointState> states_port;
 #ifdef SCHED_STATISTICS
 		RTT::OutputPort<HerkulexSchedStatistics> statistics_port;
 #endif /* SCHED_STATISTICS */
@@ -113,10 +115,14 @@ class HerkulexSched : public RTT::TaskContext
 		RTT::OperationCaller<void(const HerkulexPacket& pkt)> receivePacketCM;
 		// OPERATIONS: PROTOCOL
 		RTT::OperationCaller<bool (HerkulexPacket& req, const ServoGoal& goal)> reqIJOG;
+		RTT::OperationCaller<bool (HerkulexPacket& req, const std::string& servo)> reqStatus;
+		RTT::OperationCaller<bool (const HerkulexPacket& ack, const std::string& servo, double& temperature, servo::Status& status)> ackStatus;
+		RTT::OperationCaller<bool (HerkulexPacket& req, const std::string& servo)> reqStatusExtended;
+		RTT::OperationCaller<bool (const HerkulexPacket& ack, const std::string& servo, HerkulexState& state, servo::Status& status)> ackStatusExtended;
 		RTT::OperationCaller<bool (HerkulexPacket& req, const std::string& servo)> reqPosVel;
 		RTT::OperationCaller<bool (const HerkulexPacket& ack, const std::string& servo, double& pos, double& vel, servo::Status& status)> ackPosVel;
-		RTT::OperationCaller<bool (HerkulexPacket& req, const std::string& servo)> reqState;
-		RTT::OperationCaller<bool (const HerkulexPacket& ack, const std::string& servo, HerkulexServoState& state, servo::Status& status)> ackState;
+		RTT::OperationCaller<bool (HerkulexPacket& req, const std::string& servo)> reqPosVelExtended;
+		RTT::OperationCaller<bool (const HerkulexPacket& ack, const std::string& servo, HerkulexJointState& state, servo::Status& status)> ackPosVelExtended;
 
 	public:
 		HerkulexSched(std::string const& name);
