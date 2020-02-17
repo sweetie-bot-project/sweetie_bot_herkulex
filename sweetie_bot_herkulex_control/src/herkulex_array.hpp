@@ -66,7 +66,6 @@ class HerkulexArray : public RTT::TaskContext
 		std::shared_ptr<herkulex::servo::HerkulexServo> broadcast; /**< Fictive servo with broadcast ID. */
 		std::shared_ptr<herkulex::servo::RegisterValues> broadcast_init; /**< Global servo configuration. */
 		// port buffer
-		RTT::InputPort<RTT::os::Timer::TimerId> sync_port;
 		sensor_msgs::JointState joints;
 		// packet buffers
 		HerkulexPacket req_pkt;

@@ -102,8 +102,6 @@ HerkulexArray::HerkulexArray(std::string const& name) :
 		.set(false);
 
 	// PORTS
-	this->addEventPort("sync", sync_port)
-		.doc("Timer syncronization event. This event indicates start of real time exchange round.");
 	this->addPort("out_joints", joints_port).doc("Publish JointState by request.");
 	this->addPort("out_states", states_port).doc("Publish HerkulexState by request.");
 
@@ -1052,74 +1050,69 @@ bool HerkulexArray::startHook()
 
 void HerkulexArray::updateHook()
 {
-	log(DEBUG) << "HerkulexArray updateHook!" << endlog();
-	//RTT::os::Timer::TimerId timer_id;
-	//if (sync_port.read(timer_id) == NewData)
-	{
-		servo::HerkulexServo * s = monitor_iter->second.get();
+	// invoke servo status mobitor code
+	servo::HerkulexServo * s = monitor_iter->second.get();
+	try {
+		servo::Status status;
+		state.name = s->getName();
+		state.torque_control = 0;
+		state.led_control = 0;
+		state.voltage = 0;
+		state.temperature = 0;
+		status = 0;
 
-		try {
-			servo::Status status;
-			state.name = s->getName();
-			state.torque_control = 0;
-			state.led_control = 0;
-			state.voltage = 0;
-			state.temperature = 0;
-			status = 0;
+		if(!detailed_state)
+		{
+			unsigned int temperature_raw;
+			s->reqRead_ram(req_pkt, "temperature");
+			state.respond_sucess = sendRequest(req_pkt, s->ackCallbackRead_ram("temperature", temperature_raw, status), 1);
 
-			if(!detailed_state)
-			{
-				unsigned int temperature_raw;
-				s->reqRead_ram(req_pkt, "temperature");
-				state.respond_sucess = sendRequest(req_pkt, s->ackCallbackRead_ram("temperature", temperature_raw, status), 1);
+			if (state.respond_sucess) {
+				state.status_error = status.error;
+				state.status_detail = status.detail;
+				state.temperature = s->convertTemperatureRawToCelsius(temperature_raw);
 
-				if (state.respond_sucess) {
-					state.status_error = status.error;
-					state.status_detail = status.detail;
-					state.temperature = s->convertTemperatureRawToCelsius(temperature_raw);
-
-					if (log(DEBUG)) {
-					   log() << state.name << " STATUS: temperature=" << state.temperature << statusToString(status) << endlog();
-					}
+				if (log(DEBUG)) {
+				   log() << state.name << " STATUS: temperature=" << state.temperature << statusToString(status) << endlog();
 				}
 			}
-			else
-			{
-				s->reqStatusExtended(req_pkt);
-				state.respond_sucess = sendRequest(req_pkt,
-					s->ackCallbackStatusExtended(state.torque_control,
-												 state.led_control,
-												 state.voltage,
-												 state.temperature, status), 1);
-				if (state.respond_sucess) {
-					state.status_error = status.error;
-					state.status_detail = status.detail;
+		}
+		else
+		{
+			s->reqStatusExtended(req_pkt);
+			state.respond_sucess = sendRequest(req_pkt,
+				s->ackCallbackStatusExtended(state.torque_control,
+											 state.led_control,
+											 state.voltage,
+											 state.temperature, status), 1);
+			if (state.respond_sucess) {
+				state.status_error = status.error;
+				state.status_detail = status.detail;
 
-					if (log(DEBUG)) {
-						log() << state.name << " STATUS:"
-						      << " torque_control=" << int(state.torque_control)
-						      << " led_control=" << int(state.led_control)
-						      << " voltage=" << state.voltage
-						      << " temperature=" << state.temperature
-						      << " " << statusToString(status) << endlog();
-					}
+				if (log(DEBUG)) {
+					log() << state.name << " STATUS:"
+						  << " torque_control=" << int(state.torque_control)
+						  << " led_control=" << int(state.led_control)
+						  << " voltage=" << state.voltage
+						  << " temperature=" << state.temperature
+						  << " " << statusToString(status) << endlog();
 				}
 			}
-
-			state.header.stamp = ros::Time::now();
-			state.header.seq++;
-			states_port.write(state);
-
-		}
-		catch (const std::out_of_range& e) {
-			monitor_iter = servos.begin();
-			log(ERROR) << e.what() << endlog();
 		}
 
-		// move monitor iterator to next servo
-		monitor_iter++;
-		if (monitor_iter == servos.end()) monitor_iter = servos.begin();
+		state.header.stamp = ros::Time::now();
+		state.header.seq++;
+		states_port.write(state);
+
 	}
+	catch (const std::out_of_range& e) {
+		monitor_iter = servos.begin();
+		log(ERROR) << e.what() << endlog();
+	}
+
+	// move monitor iterator to next servo
+	monitor_iter++;
+	if (monitor_iter == servos.end()) monitor_iter = servos.begin();
 }
 
 void HerkulexArray::stopHook() 
