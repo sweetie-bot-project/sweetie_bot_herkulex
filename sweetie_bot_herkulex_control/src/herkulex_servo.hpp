@@ -260,6 +260,8 @@ namespace servo {
 			virtual unsigned int convertPosRadToRaw(double pos) const = 0;
 			virtual double convertTimeRawToSec(unsigned int raw) const = 0;
 			virtual unsigned int convertTimeSecToRaw(double pos) const = 0;
+			virtual double convertVoltageRawToVolts(unsigned int raw) const = 0;
+			virtual double convertTemperatureRawToCelsius(unsigned int raw) const = 0;
 
 			virtual bool ackStatus(const HerkulexPacket& ack, double& temperature, Status& status) const = 0;
 			virtual void reqStatus(HerkulexPacket& req) const = 0;
