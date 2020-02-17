@@ -36,6 +36,8 @@ class HerkulexDriver : public RTT::TaskContext
 		HerkulexPacket recv_pkt;
 		unsigned char recv_pkt_size;
 		unsigned char recv_pkt_checksum1;
+		// Send buffer
+		RTT::base::BufferLockFree< HerkulexPacket > send_buffer; 
 
 	// COMPONENT INTERFACE
 	protected:
@@ -46,6 +48,7 @@ class HerkulexDriver : public RTT::TaskContext
 	protected:
 		// Operations: provided
 		void sendPacketDL(const HerkulexPacket& pkt);
+		void sendPacketDL_impl(const HerkulexPacket& pkt);
 		void waitSendPacketDL();
 		// Operations: required
 		RTT::OperationCaller<void(const HerkulexPacket& pkt)> receivePacketDL;

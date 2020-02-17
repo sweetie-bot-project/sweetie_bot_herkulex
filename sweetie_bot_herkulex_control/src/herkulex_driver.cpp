@@ -35,6 +35,7 @@ HerkulexDriver::HerkulexDriver(std::string const& name) :
 	TaskContext(name, PreOperational),
 	receivePacketDL("receivePacket"),
 	port_fd(-1),
+	send_buffer(10, HerkulexPacket(), true),
 	log(logger::categoryFromComponentName(name))
 {
 	if (!log.ready()) {
@@ -44,7 +45,7 @@ HerkulexDriver::HerkulexDriver(std::string const& name) :
 		return;
 	}
 
-	this->addOperation("sendPacket", &HerkulexDriver::sendPacketDL, this, OwnThread) 
+	this->addOperation("sendPacket", &HerkulexDriver::sendPacketDL, this, ClientThread) 
 		.doc("Send packet to servos.") 
 		.arg("pkt", "HerkulexPacket to send.");
 
@@ -144,6 +145,7 @@ bool HerkulexDriver::configureHook()
 	
 	// reserve memory
 	recv_pkt.data.reserve(HerkulexPacket::DATA_SIZE);
+	send_buffer.data_sample(recv_pkt);
 	log(INFO) << "HerkulexDriver is configured!" << endlog(); 
 	return true;
 }
@@ -164,6 +166,15 @@ bool HerkulexDriver::startHook()
 
 void HerkulexDriver::updateHook()
 {
+	// process pending send request
+	do {
+		HerkulexPacket * pkt_ptr = send_buffer.PopWithoutRelease();
+		if (pkt_ptr == nullptr) break;
+		sendPacketDL_impl(*pkt_ptr);
+		send_buffer.Release(pkt_ptr);
+	} while (true);
+
+	// proccess data on port
 	extras::FileDescriptorActivity * activity = dynamic_cast<extras::FileDescriptorActivity *>(this->getActivity());
 	if (! activity) {
 		log(ERROR) << "Incompatible activity type."  << endlog(); 
@@ -312,10 +323,14 @@ void HerkulexDriver::updateHook()
 
 void HerkulexDriver::sendPacketDL(const HerkulexPacket& pkt) 
 {
+	send_buffer.Push(pkt);
+	this->trigger();
+}
+
+void HerkulexDriver::sendPacketDL_impl(const HerkulexPacket& pkt) 
+{
 	unsigned char buffer[HerkulexPacket::HEADER_SIZE + HerkulexPacket::DATA_SIZE];
 	size_t pkt_size = HerkulexPacket::HEADER_SIZE + pkt.data.size();
-
-	if (!isConfigured()) return;
 
 	if (pkt_size > HerkulexPacket::HEADER_SIZE + HerkulexPacket::DATA_SIZE) {
 		log(ERROR) << "REQ packet is too large." << endlog(); 
@@ -362,7 +377,6 @@ void HerkulexDriver::sendPacketDL(const HerkulexPacket& pkt)
 			log() << std::setfill('0') << std::setw(2) << std::right << std::hex << unsigned(buffer[i]) << " ";
 		log() << resetfmt << endlog();
 	}
-
 }
 
 void HerkulexDriver::waitSendPacketDL() 
