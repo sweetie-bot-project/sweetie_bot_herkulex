@@ -20,20 +20,10 @@ HerkulexSched::HerkulexSched(std::string const& name) :
 	sendPacketDL("sendPacketDL", this->engine()),
 	waitSendPacketDL("waitSendPacketDL", this->engine()),
 	reqIJOG("reqIJOG"),
-	//*
-	reqStatus("reqStatus"),
-	ackStatus("ackStatus"),
-	// */
-	//*
-	reqStatusExtended("reqStatusExtended"),
-	ackStatusExtended("ackStatusExtended"),
-	// */
-	//*
 	reqPosVel("reqPosVel"),
 	ackPosVel("ackPosVel"),
 	reqPosVelExtended("reqPosVelExtended"),
 	ackPosVelExtended("ackPosVelExtended"),
-	// */
 	cm_req_buffer(10, HerkulexPacket(), true),
 	ack_buffer(10, HerkulexPacket(), true),
 	timer(this),
@@ -113,18 +103,10 @@ HerkulexSched::HerkulexSched(std::string const& name) :
 
 	// Protocol
 	this->requires("protocol")->addOperationCaller(reqIJOG);
-	this->requires("protocol")->addOperationCaller(reqStatus);
-	this->requires("protocol")->addOperationCaller(ackStatus);
-	//*
-	this->requires("protocol")->addOperationCaller(reqStatusExtended);
-	this->requires("protocol")->addOperationCaller(ackStatusExtended);
-	// */
-	//*
 	this->requires("protocol")->addOperationCaller(reqPosVel);
 	this->requires("protocol")->addOperationCaller(ackPosVel);
 	this->requires("protocol")->addOperationCaller(reqPosVelExtended);
 	this->requires("protocol")->addOperationCaller(ackPosVelExtended);
-	// */
 }
 
 bool HerkulexSched::configureHook()

@@ -202,33 +202,6 @@ HerkulexArray::HerkulexArray(std::string const& name) :
 		.doc("Generate IJOG packet, cause exeception on failure.")
 		.arg("req", "Reference to generated packet (HerkulexPacket).")
 		.arg("goal", "Position controlled servo new goal position (ServoGoal).");
-	//*
-	this->provides("protocol")->addOperation("reqStatus", &HerkulexArray::reqStatus, this, ClientThread)
-		.doc("Generate READ packet for temperature query. Can cause exeception on failure.")
-		.arg("req", "Reference to generated packet (HerkulexPacket).")
-		.arg("servo", "Servo name.");
-	this->provides("protocol")->addOperation("ackStatus", &HerkulexArray::ackStatus, this, ClientThread)
-		.doc("Generate READ packet for position and velocity query. Can cause exeception on failure, return false on invalid packet.")
-		.arg("ack", "Reference to received packet (HerkulexPacket).")
-		.arg("servo", "Servo name.")
-		.arg("temperature", "Temperature in celsius.")
-		.arg("status", "Servo status (byte0=status_error, byte1=status_detail).");
-	// */
-	//*
-	this->provides("protocol")->addOperation("reqStatusExtended", &HerkulexArray::reqStatusExtended, this, ClientThread)
-		.doc("Generate READ packet for extended status query. Can cause exeception on failure.")
-		.arg("req", "Reference to generated packet (HerkulexPacket).")
-		.arg("servo", "Servo name.");
-	// */
-	//*
-	this->provides("protocol")->addOperation("ackStatusExtended", &HerkulexArray::ackStatusExtended, this, ClientThread)
-		.doc("Generate READ packet for position and velocity query. Can cause exeception on failure, return false on invalid packet.")
-		.arg("ack", "Reference to received packet (HerkulexPacket).")
-		.arg("servo", "Servo name.")
-		.arg("state", "Reference to HerkulexState msg, if query has succed servo state will be there.")
-		.arg("status", "Servo status (byte0=status_error, byte1=status_detail).");
-	// */
-	//*
 	this->provides("protocol")->addOperation("reqPosVel", &HerkulexArray::reqPosVel, this, ClientThread)
 		.doc("Generate READ packet for position and velocity query. Can cause exeception on failure.")
 		.arg("req", "Reference to generated packet (HerkulexPacket).")
@@ -250,7 +223,6 @@ HerkulexArray::HerkulexArray(std::string const& name) :
 		.arg("servo", "Servo name.")
 		.arg("state", "Reference to HerkulexJointState msg, if query has succed extended servo state will be pushed back.")
 		.arg("status", "Servo status (byte0=status_error, byte1=status_detail).");
-	// */
 }
 
 bool HerkulexArray::configureHook()
@@ -936,38 +908,6 @@ bool HerkulexArray::reqIJOG(HerkulexPacket& req, const ServoGoal& goal)
 			s->second->insertIJOGdata(req, servo::JOGMode::POSITION_CONTROL, s->second->convertPosRadToRaw(goal.target_pos[i]), s->second->convertTimeSecToRaw(goal.playtime[i]));
 		}
 	}
-}
-
-bool HerkulexArray::reqStatus(HerkulexPacket& req, const std::string& servo)
-{
-	if (!this->isConfigured()) return false;
-	getServo(servo).reqStatus(req);
-	return true;
-}
-
-bool HerkulexArray::ackStatus(const HerkulexPacket& ack, const std::string& servo, double& temperature, servo::Status& status)
-{
-	if (!this->isConfigured()) return false;
-	//servo::Status status;
-	bool success = getServo(servo).ackStatus(ack, temperature, status);
-	//_status = status;
-	return success;
-}
-
-bool HerkulexArray::reqStatusExtended(HerkulexPacket& req, const std::string& servo)
-{
-	if (!this->isConfigured()) return false;
-	getServo(servo).reqStatusExtended(req);
-	return true;
-}
-
-bool HerkulexArray::ackStatusExtended(const HerkulexPacket& ack, const std::string& servo,HerkulexState& state, servo::Status& status)
-{
-	if (!this->isConfigured()) return false;
-	//servo::Status status;
-	state.respond_sucess = getServo(servo).ackStatusExtended(ack, state.torque_control, state.led_control, state.voltage, state.temperature, status);
-	//_status = status;
-	return state.respond_sucess;
 }
 
 bool HerkulexArray::reqPosVel(HerkulexPacket& req, const std::string& servo)

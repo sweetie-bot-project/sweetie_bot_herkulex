@@ -115,10 +115,6 @@ class HerkulexSched : public RTT::TaskContext
 		RTT::OperationCaller<void(const HerkulexPacket& pkt)> receivePacketCM;
 		// OPERATIONS: PROTOCOL
 		RTT::OperationCaller<bool (HerkulexPacket& req, const ServoGoal& goal)> reqIJOG;
-		RTT::OperationCaller<bool (HerkulexPacket& req, const std::string& servo)> reqStatus;
-		RTT::OperationCaller<bool (const HerkulexPacket& ack, const std::string& servo, double& temperature, servo::Status& status)> ackStatus;
-		RTT::OperationCaller<bool (HerkulexPacket& req, const std::string& servo)> reqStatusExtended;
-		RTT::OperationCaller<bool (const HerkulexPacket& ack, const std::string& servo, HerkulexState& state, servo::Status& status)> ackStatusExtended;
 		RTT::OperationCaller<bool (HerkulexPacket& req, const std::string& servo)> reqPosVel;
 		RTT::OperationCaller<bool (const HerkulexPacket& ack, const std::string& servo, double& pos, double& vel, servo::Status& status)> ackPosVel;
 		RTT::OperationCaller<bool (HerkulexPacket& req, const std::string& servo)> reqPosVelExtended;

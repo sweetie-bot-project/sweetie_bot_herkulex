@@ -132,10 +132,6 @@ class HerkulexArray : public RTT::TaskContext
 
 		// OPERATIONS: PROVIDED (protocol interface)
 		bool reqIJOG(HerkulexPacket& req, const ServoGoal& goal);
-		bool reqStatus(HerkulexPacket& req, const std::string& servo);
-		bool ackStatus(const HerkulexPacket& ack, const std::string& servo, double& temperature, servo::Status& status);
-		bool reqStatusExtended(HerkulexPacket& req, const std::string& servo);
-		bool ackStatusExtended(const HerkulexPacket& ack, const std::string& servo, HerkulexState& state, servo::Status& status);
 		bool reqPosVel(HerkulexPacket& req, const std::string& servo);
 		bool ackPosVel(const HerkulexPacket& ack, const std::string& servo, double& pos, double& vel, servo::Status& status);
 		bool reqPosVelExtended(HerkulexPacket& req, const std::string& servo);
