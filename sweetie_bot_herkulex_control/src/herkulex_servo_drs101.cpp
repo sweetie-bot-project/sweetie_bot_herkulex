@@ -145,28 +145,6 @@ unsigned int HerkulexServoDRS101::convertTimeSecToRaw(double time) const
 	return time / TIME_CONV_COEFF_RAW2SEC;
 };
 
-void HerkulexServoDRS101::reqStatus(HerkulexPacket& req) const
-{
-	req.command = HerkulexPacket::REQ_RAM_READ;
-	req.servo_id = u_char(hw_id);
-	req.data.resize(2);
-	req.data[0] = 55; // RAW addr of Voltage
-	req.data[1] = 1;
-}
-
-bool HerkulexServoDRS101::ackStatus(const HerkulexPacket& ack, double& temperature, Status& status) const
-{
-	// read 47 throw 50
-	if (ack.servo_id != hw_id) return false;
-	if (ack.command != HerkulexPacket::ACK_RAM_READ) return false;
-	if (ack.data.size() != 5) return false;
-	if (ack.data[0] != 55 || ack.data[1] != 1) return false;
-	unsigned int data[1];
-	if (!ackRead_impl(ack, 50, data, status)) return false;
-	temperature = convertTemperatureRawToCelsius(data[0]);
-	return true;
-}
-
 void HerkulexServoDRS101::reqStatusExtended(HerkulexPacket& req) const
 {
 	req.command = HerkulexPacket::REQ_RAM_READ;

@@ -1069,12 +1069,14 @@ void HerkulexArray::updateHook()
 
 			if(!detailed_state)
 			{
-				s->reqStatus(req_pkt);
-				state.respond_sucess = sendRequest(req_pkt, s->ackCallbackStatus(state.temperature, status), 1);
+				unsigned int temperature_raw;
+				s->reqRead_ram(req_pkt, "temperature");
+				state.respond_sucess = sendRequest(req_pkt, s->ackCallbackRead_ram("temperature", temperature_raw, status), 1);
 
 				if (state.respond_sucess) {
 					state.status_error = status.error;
 					state.status_detail = status.detail;
+					state.temperature = s->convertTemperatureRawToCelsius(temperature_raw);
 
 					if (log(DEBUG)) {
 					   log() << state.name << " STATUS: temperature=" << state.temperature << statusToString(status) << endlog();

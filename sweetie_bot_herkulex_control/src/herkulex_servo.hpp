@@ -263,12 +263,6 @@ namespace servo {
 			virtual double convertVoltageRawToVolts(unsigned int raw) const = 0;
 			virtual double convertTemperatureRawToCelsius(unsigned int raw) const = 0;
 
-			virtual bool ackStatus(const HerkulexPacket& ack, double& temperature, Status& status) const = 0;
-			virtual void reqStatus(HerkulexPacket& req) const = 0;
-			AckCallback ackCallbackStatus(double& temperature, Status& status) const {
-				return boost::bind(&HerkulexServo::ackStatus, this, _1, boost::ref(temperature), boost::ref(status));
-			}
-
 			virtual void reqStatusExtended(HerkulexPacket& req) const = 0;
 			virtual bool ackStatusExtended(const HerkulexPacket& ack, unsigned char& torque_control, unsigned char& led_control, double& voltage, double& temperature, Status& status) const = 0;
 			AckCallback ackCallbackStatusExtended(unsigned char& torque_control, unsigned char& led_control, double& voltage, double& temperature, Status& status) const {
