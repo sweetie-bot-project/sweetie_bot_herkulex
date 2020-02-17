@@ -313,6 +313,7 @@ bool HerkulexArray::configureHook()
 	servos.erase(bcast);
 	servos_init.erase("broadcast");
 
+	// Set monitor iterator to first servo.
 	monitor_iter = servos.begin();
 
 	//Prepare JointState an buffers.  Set sample to port.
@@ -1039,6 +1040,9 @@ bool HerkulexArray::sendRequest(const HerkulexPacket& req, servo::HerkulexServo:
 
 bool HerkulexArray::startHook()
 {
+	// Reset servo monitor iterator.
+	monitor_iter = servos.begin();
+
 	log(INFO) << "HerkulexArray is started!" << endlog();
 	return true;
 }
@@ -1046,7 +1050,7 @@ bool HerkulexArray::startHook()
 void HerkulexArray::updateHook()
 {
 	log(DEBUG) << "HerkulexArray updateHook!" << endlog();
-	RTT::os::Timer::TimerId timer_id;
+	//RTT::os::Timer::TimerId timer_id;
 	//if (sync_port.read(timer_id) == NewData)
 	{
 		servo::HerkulexServo * s = monitor_iter->second.get();
@@ -1063,11 +1067,16 @@ void HerkulexArray::updateHook()
 			if(!detailed_state)
 			{
 				s->reqStatus(req_pkt);
-				state.respond_sucess = sendRequest(req_pkt,
-					s->ackCallbackStatus(state.temperature, status), 1);
-				log(DEBUG) << " temperature=" << state.temperature
-						   << " error=" << int(status.error)
-						   << " detail=" << int(status.detail) << endlog();
+				state.respond_sucess = sendRequest(req_pkt, s->ackCallbackStatus(state.temperature, status), 1);
+
+				if (state.respond_sucess) {
+					state.status_error = status.error;
+					state.status_detail = status.detail;
+
+					if (log(DEBUG)) {
+					   log() << state.name << " STATUS: temperature=" << state.temperature << statusToString(status) << endlog();
+					}
+				}
 			}
 			else
 			{
@@ -1077,20 +1086,20 @@ void HerkulexArray::updateHook()
 												 state.led_control,
 												 state.voltage,
 												 state.temperature, status), 1);
-				log(DEBUG) << " torque_control=" << int(state.torque_control)
-						   << " led_control=" << int(state.led_control)
-						   << " voltage=" << state.voltage
-						   << " temperature=" << state.temperature
-						   << " error=" << int(status.error)
-						   << " detail=" << int(status.detail) << endlog();
-			}
-			state.status_error =status.error;
-			state.status_detail=status.detail;
+				if (state.respond_sucess) {
+					state.status_error = status.error;
+					state.status_detail = status.detail;
 
-			if (state.respond_sucess)
-				log(DEBUG) << "ackCallbackStatus ACK OK" << endlog();
-			else
-				log(DEBUG) << "ackCallbackStatus ACK Fail!" << endlog();
+					if (log(DEBUG)) {
+						log() << state.name << " STATUS:"
+						      << " torque_control=" << int(state.torque_control)
+						      << " led_control=" << int(state.led_control)
+						      << " voltage=" << state.voltage
+						      << " temperature=" << state.temperature
+						      << " " << statusToString(status) << endlog();
+					}
+				}
+			}
 
 			state.header.stamp = ros::Time::now();
 			state.header.seq++;
@@ -1102,14 +1111,9 @@ void HerkulexArray::updateHook()
 			log(ERROR) << e.what() << endlog();
 		}
 
-		if(std::next(monitor_iter) == servos.end())
-		{
-			monitor_iter = servos.begin();
-		}
-		else
-		{
-			monitor_iter++;
-		}
+		// move monitor iterator to next servo
+		monitor_iter++;
+		if (monitor_iter == servos.end()) monitor_iter = servos.begin();
 	}
   // updateHook is exected after all opertions are finished,
   break_loop_flag = false;
