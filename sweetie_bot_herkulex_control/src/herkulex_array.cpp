@@ -1035,6 +1035,9 @@ bool HerkulexArray::sendRequest(const HerkulexPacket& req, servo::HerkulexServo:
 	}
 	while (!success && tryouts && !break_loop_flag);
 
+	// clear break loop flag
+	break_loop_flag = false;
+
 	return success;
 }	
 
@@ -1115,8 +1118,6 @@ void HerkulexArray::updateHook()
 		monitor_iter++;
 		if (monitor_iter == servos.end()) monitor_iter = servos.begin();
 	}
-  // updateHook is exected after all opertions are finished,
-  break_loop_flag = false;
 }
 
 void HerkulexArray::stopHook() 
