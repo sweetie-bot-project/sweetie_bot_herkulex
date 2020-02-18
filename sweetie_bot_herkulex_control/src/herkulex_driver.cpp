@@ -156,6 +156,10 @@ bool HerkulexDriver::startHook()
 		log(ERROR) << "tcflush() failed:" << strerror(errno) << endlog(); 
 		return false;
 	}
+	// clear receive buffers
+	recv_buffer_index = 0;
+	recv_buffer_header_index = 0;
+	recv_buffer_size = 0;
 	// wait for header
 	recv_state = HEADER1;
 	log(INFO) << "HerkulexDriver is started!" << endlog(); 
@@ -177,67 +181,92 @@ void HerkulexDriver::updateHook()
 	}
 
 	if (activity->isUpdated(port_fd)) {
-		// read new data on port
-		unsigned char buffer[HerkulexPacket::HEADER_SIZE + HerkulexPacket::DATA_SIZE];
-		ssize_t buffer_index, buffer_size;
-
-		ssize_t retval = TEMP_FAILURE_RETRY(read(port_fd, buffer, sizeof(buffer)));
+		// read new data on port and add it to raw buffer
+		ssize_t retval = TEMP_FAILURE_RETRY(read(port_fd, recv_buffer + recv_buffer_size, sizeof(recv_buffer) - recv_buffer_size));
 		if (retval == 0) return;
 		else if (retval == -1) {
 			log(ERROR) << "Read serial port failed:" << strerror(errno) << endlog(); 
 			this->exception();
+			return;
 		}
-		buffer_size = retval;
-		buffer_index = 0;
+		recv_buffer_size += retval;
 
 		if (log(DEBUG)) {
-			log() << "READ on serial port (" << buffer_size << " bytes): ";
-			for (int i = 0; i < buffer_size; i++)
-				log() << std::setfill('0') << std::setw(2) << std::right << std::hex << unsigned(buffer[i]) << " ";
-			log() << resetfmt << std::endl << "STATE = " << recv_state << endlog();
+			log() << "RECEIVE buffer (" << recv_buffer_size << " bytes): ";
+			for (int i = 0; i < recv_buffer_size; i++)
+				log() << std::setfill('0') << std::setw(2) << std::right << std::hex << unsigned(recv_buffer[i]) << " ";
+			log() << endlog();
 		}
 
 		// parse new data in buffer
-		for(; buffer_index < buffer_size; buffer_index++) {
-			unsigned char c = buffer[buffer_index];
+		while (recv_buffer_index < recv_buffer_size) {
+			unsigned char c;
+			unsigned char * header_ptr;
 
-			/*if (log().getLogLevel() >= Logger::DEBUG) {
-				Logger::In in("HerkulexDriver");
-				log(DEBUG) << "c = " << std::dec << (unsigned int) c << std::dec << " state = " << recv_state << endlog();
-			}*/
+			// bool gc(unsigned char& c) {
+			//    if (recv_buffer_index >= recv_buffer_size) return false;
+			//    c = recv_buffer[recv_buffer_index];
+			//    recv_buffer_index++;
+			//    return true;
+			// }
+
+			if (log(DEBUG)) {
+				log() << "RECEIVER state = " << recv_state << " index = " << recv_buffer_index << " header_index = " << recv_buffer_header_index << endlog();
+			}
 
 			switch (recv_state) {
 				case HEADER1:
-					//TODO use memchr
-					if (c == 0xFF) recv_state = HEADER2;
-					break;
+					header_ptr = (unsigned char *) memchr(recv_buffer + recv_buffer_index, 0xFF, recv_buffer_size - recv_buffer_index);
+					if (header_ptr == nullptr) {
+						// header not found: clear receive buffer
+						recv_buffer_header_index = recv_buffer_size;
+						recv_buffer_index = recv_buffer_size; 
+						break;
+					}
+					// 0xFF found: store header start position
+					recv_buffer_header_index = header_ptr - recv_buffer;
+					recv_buffer_index = recv_buffer_header_index + 1; // first non-processed byte
+
+					recv_state = HEADER2;
 
 				case HEADER2:
-					if (c != 0xFF) recv_state = HEADER1;	
+					if (!gc(c)) break;
+
+					if (c != 0xFF) {
+						recv_state = HEADER1;
+						break;
+					}
 					recv_pkt.data.clear();
 					recv_state = PACKET_SIZE;
-					break;
 
 				case PACKET_SIZE:
+					if (!gc(c)) break;
+
 					if (c > HerkulexPacket::HEADER_SIZE + HerkulexPacket::DATA_SIZE) {
-						// incorrect packet size
-						if (c == 0xFF) recv_state = PACKET_SIZE;
-						else {
-							log(WARN) << "ACK packet size is incorrect, size = " << std::dec << (unsigned int) c <<  endlog();
-							recv_state = HEADER1;
+						if (c == 0xFF) {
+							// 0xFF 0XFF sequence is still present, but we have to shift header position one byte forward
+							recv_buffer_header_index++;
+							break; 
 						}
-						break;
+						else {
+							// incorrect packet size
+							log(WARN) << "ACK packet size is incorrect, size = " << std::dec << (unsigned int) c <<  endlog();
+							recv_state = PARSE_ERROR;
+							break;
+						}
 					}
 					recv_pkt_size = c;
 					recv_state = SERVO_ID;
-					break;
 
 				case SERVO_ID:
+					if (!gc(c)) break;
+
 					recv_pkt.servo_id = c;
 					recv_state = CMD;
-					break;
 
 				case CMD:
+					if (!gc(c)) break;
+
 					switch (c) {
 						//TODO ACK mask
 						case HerkulexPacket::ACK_EEP_READ:
@@ -253,38 +282,36 @@ void HerkulexDriver::updateHook()
 							recv_state = CHECKSUM1;
 							break;
 						default:
-							{
-								log(WARN) << "ACK packet type is unknown, servo = " << std::dec << (unsigned int) recv_pkt.servo_id << " cmd = " << (unsigned int) recv_pkt.command << std::dec << endlog();
-							}
-							recv_state = HEADER1;
+							log(WARN) << "ACK packet type is unknown, servo = " << std::dec << (unsigned int) recv_pkt.servo_id << " cmd = " << (unsigned int) recv_pkt.command << std::dec << endlog();
+							recv_state = PARSE_ERROR;
 							break;
 					}
 					break;
 
 				case CHECKSUM1:
+					if (!gc(c)) break;
+
 					recv_pkt_checksum1 = c;
 					recv_state = CHECKSUM2;
-					break;
 
 				case CHECKSUM2:
+					if (!gc(c)) break;
+
 					if ( c != (~recv_pkt_checksum1 & 0xFE) ) {
-						{
-							log(WARN) << "ACK packet, checksum2 error, servo = " << std::dec << (unsigned int) recv_pkt.servo_id << " cmd = " << (unsigned int) recv_pkt.command << std::dec << endlog();
-						}
-						recv_state = HEADER1;
+						log(WARN) << "ACK packet, checksum2 error, servo = " << std::dec << (unsigned int) recv_pkt.servo_id << " cmd = " << (unsigned int) recv_pkt.command << std::dec << endlog();
+						recv_state = PARSE_ERROR;
 						break;
 					}
 					recv_state = DATA;
-					break;
 
 				case DATA:
 					{
 						ssize_t bytes_to_read = recv_pkt_size - HerkulexPacket::HEADER_SIZE - recv_pkt.data.size();
-						bytes_to_read = std::min(bytes_to_read, buffer_size - buffer_index);
+						bytes_to_read = std::min(bytes_to_read, recv_buffer_size - recv_buffer_index);
 
-						recv_pkt.data.insert(recv_pkt.data.end(), buffer + buffer_index, buffer + buffer_index + bytes_to_read);
+						recv_pkt.data.insert(recv_pkt.data.end(), recv_buffer + recv_buffer_index, recv_buffer + recv_buffer_index + bytes_to_read);
 
-						buffer_index += bytes_to_read - 1;
+						recv_buffer_index += bytes_to_read; // first non-processed byte
 					}
 					// check if full packet is receved
 					if (recv_pkt.data.size() == recv_pkt_size - HerkulexPacket::HEADER_SIZE) {
@@ -298,14 +325,35 @@ void HerkulexDriver::updateHook()
 							if (receivePacketDL.ready()) {
 								receivePacketDL(recv_pkt);
 							}
+							recv_buffer_header_index = recv_buffer_index; // skip everysing until next byte
+							recv_state = HEADER1;
 						}
 						else {
 							log(WARN) << "ACK packet checksum1 error, servo = " << std::dec << (unsigned int) recv_pkt.servo_id << " cmd = " << (unsigned int) recv_pkt.command << std::dec << endlog();
+							recv_state = PARSE_ERROR;
 						}
-						recv_state = HEADER1;
 					}
 					break;
+
+				case PARSE_ERROR:
+					// parse error occurs: start buffer analisys from the second byte of header
+					recv_buffer_index = recv_buffer_header_index + 1; 
+					recv_state = HEADER1;
+					break;
 			}
+		} 
+
+		// shift buffer content to clear everything until header start
+		if (recv_buffer_header_index > 0) {
+			recv_buffer_size -= recv_buffer_header_index;
+			recv_buffer_index -= recv_buffer_header_index;
+			memmove(recv_buffer, recv_buffer + recv_buffer_header_index, recv_buffer_size);
+		}
+
+		if (recv_buffer_size == sizeof(recv_buffer)) {
+			log(FATAL) << "Receiver buffer depleded. Packet parser internal logic error." << endlog();
+			this->exception();
+			return;
 		}
 	} // if (activity->isUpdated(port_fd))
 }
@@ -351,10 +399,6 @@ void HerkulexDriver::sendPacketDL(const HerkulexPacket& pkt)
 		bytes_written += retval;
 	}
 	while (bytes_written < pkt_size);
-
-	//TODO make this optional
-	// reset receiver in case future reply
-	recv_state = HEADER1;
 
 	if (log(DEBUG)) {
 		log() << "WRITE on serial port (" << pkt_size << " bytes): ";

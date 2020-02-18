@@ -17,7 +17,7 @@ class HerkulexDriver : public RTT::TaskContext
 		typedef sweetie_bot_herkulex_msgs::HerkulexPacket HerkulexPacket;
 
 		enum ReceiverState {
-			HEADER1, HEADER2, PACKET_SIZE, SERVO_ID, CMD, CHECKSUM1, CHECKSUM2, DATA 
+			HEADER1, HEADER2, PACKET_SIZE, SERVO_ID, CMD, CHECKSUM1, CHECKSUM2, DATA, PARSE_ERROR
 		};
 		//static const unsigned int BUFFER_SIZE;
 		//static const unsigned int HEADER_SIZE;
@@ -33,6 +33,10 @@ class HerkulexDriver : public RTT::TaskContext
 		// Receiver state
 		ReceiverState recv_state;
 		// Receive buffers
+		unsigned char recv_buffer[HerkulexPacket::HEADER_SIZE + HerkulexPacket::DATA_SIZE]; // raw receive buffer 
+		ssize_t recv_buffer_size; // size of data in  raw recive buffer
+		ssize_t recv_buffer_index; // points on first non processed byte in raw buffer
+		ssize_t recv_buffer_header_index; // index of header first byte in recieve buffer
 		HerkulexPacket recv_pkt;
 		unsigned char recv_pkt_size;
 		unsigned char recv_pkt_checksum1;
@@ -49,6 +53,13 @@ class HerkulexDriver : public RTT::TaskContext
 		void waitSendPacketDL();
 		// Operations: required
 		RTT::OperationCaller<void(const HerkulexPacket& pkt)> receivePacketDL;
+	
+	protected:
+		bool gc(unsigned char& c) {
+			if (recv_buffer_index >= recv_buffer_size) return false;
+			c = recv_buffer[recv_buffer_index++];
+			return true;
+		}
 
 	public:
 		HerkulexDriver(std::string const& name);
