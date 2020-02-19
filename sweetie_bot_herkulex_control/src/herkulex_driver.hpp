@@ -24,9 +24,9 @@ class HerkulexDriver : public RTT::TaskContext
 
 	protected:
 #ifdef SWEETIEBOT_LOGGER
-		sweetie_bot::logger::SWEETIEBOT_LOGGER log;
+		sweetie_bot::logger::SWEETIEBOT_LOGGER log, sender_log;
 #else
-		sweetie_bot::logger::LoggerRTT log;
+		sweetie_bot::logger::LoggerRTT log, sender_log;
 #endif
 		// Port file handler
 		int port_fd;
@@ -40,6 +40,13 @@ class HerkulexDriver : public RTT::TaskContext
 		HerkulexPacket recv_pkt;
 		unsigned char recv_pkt_size;
 		unsigned char recv_pkt_checksum1;
+		// Sender state
+		RTT::os::Mutex send_mutex; // mutex to prevent rances if sendPacketDL() is called from multiple threads.
+#ifdef SWEETIEBOT_LOGGER
+		sweetie_bot::logger::SWEETIEBOT_LOGGER send_log; // logger facilities for sendPacketDL() operation.
+#else
+		sweetie_bot::logger::LoggerRTT send_log; // logger facilities for sendPacketDL() operation.
+#endif
 
 	// COMPONENT INTERFACE
 	protected:

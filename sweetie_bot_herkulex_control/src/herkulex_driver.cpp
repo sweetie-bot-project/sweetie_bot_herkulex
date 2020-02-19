@@ -35,7 +35,8 @@ HerkulexDriver::HerkulexDriver(std::string const& name) :
 	TaskContext(name, PreOperational),
 	receivePacketDL("receivePacket"),
 	port_fd(-1),
-	log(logger::categoryFromComponentName(name))
+	log(logger::categoryFromComponentName(name)),
+	send_log(logger::categoryFromComponentName(name))
 {
 	if (!log.ready()) {
 		RTT::Logger::In in("HerkulexDriver");
@@ -44,11 +45,11 @@ HerkulexDriver::HerkulexDriver(std::string const& name) :
 		return;
 	}
 
-	this->addOperation("sendPacket", &HerkulexDriver::sendPacketDL, this, OwnThread) 
+	this->addOperation("sendPacket", &HerkulexDriver::sendPacketDL, this, ClientThread)  // see note about 'ClientThread' in function definition
 		.doc("Send packet to servos.") 
 		.arg("pkt", "HerkulexPacket to send.");
 
-	this->addOperation("waitSendPacket", &HerkulexDriver::waitSendPacketDL, this, OwnThread) 
+	this->addOperation("waitSendPacket", &HerkulexDriver::waitSendPacketDL, this, ClientThread)  // see note about 'ClientThread'  in function definition
 		.doc("Wait until last send packet is actually writen to serial port.");
 
 	this->requires()->addOperationCaller(receivePacketDL);
@@ -360,13 +361,25 @@ void HerkulexDriver::updateHook()
 
 void HerkulexDriver::sendPacketDL(const HerkulexPacket& pkt) 
 {
-	unsigned char buffer[HerkulexPacket::HEADER_SIZE + HerkulexPacket::DATA_SIZE];
-	size_t pkt_size = HerkulexPacket::HEADER_SIZE + pkt.data.size();
+	// This operation is called in client thread with corresponding priority.
+	//
+	// This is walkaround for deadlock bug, when caller is blocked during call to sendPacketDL() operation 
+	// (It seems it does not receive notification after operation is executed). This bug is a quite rare occurence, 
+	// but eventually it blocks caller if it works long enough.
+	//
+	// send_mutex prevent races realted with write syscall and logger.
+	// This function uses separate logger instance (send_log) to avoid collisions with updateHook().
 
 	if (!isConfigured()) return;
 
+	// lock mutex to prevent simultenous write and logging attempt
+	RTT::os::MutexLock lock(send_mutex);
+
+	unsigned char buffer[HerkulexPacket::HEADER_SIZE + HerkulexPacket::DATA_SIZE];
+	size_t pkt_size = HerkulexPacket::HEADER_SIZE + pkt.data.size();
+
 	if (pkt_size > HerkulexPacket::HEADER_SIZE + HerkulexPacket::DATA_SIZE) {
-		log(ERROR) << "REQ packet is too large." << endlog(); 
+		send_log(ERROR) << "REQ packet is too large." << endlog();
 		return;
 	}
 
@@ -392,7 +405,8 @@ void HerkulexDriver::sendPacketDL(const HerkulexPacket& pkt)
 	do {
 		ssize_t retval = TEMP_FAILURE_RETRY(write(port_fd, buffer + bytes_written, pkt_size - bytes_written));
 		if (retval == -1) {
-			log(ERROR) << "Write to serial port failed: " << strerror(errno) << endlog(); 
+			RTT::os::MutexLock lock(send_mutex); // prevent simultenous logging attempts
+			send_log(ERROR) << "Write to serial port failed: " << strerror(errno) << endlog(); 
 			this->exception();
 			return;
 		}
@@ -400,20 +414,20 @@ void HerkulexDriver::sendPacketDL(const HerkulexPacket& pkt)
 	}
 	while (bytes_written < pkt_size);
 
-	if (log(DEBUG)) {
-		log() << "WRITE on serial port (" << pkt_size << " bytes): ";
+	if (send_log(DEBUG)) {
+		send_log() << "WRITE on serial port (" << pkt_size << " bytes): ";
 		for (int i = 0; i < pkt_size; i++)
-			log() << std::setfill('0') << std::setw(2) << std::right << std::hex << unsigned(buffer[i]) << " ";
-		log() << resetfmt << endlog();
+			send_log() << std::setfill('0') << std::setw(2) << std::right << std::hex << unsigned(buffer[i]) << " ";
+		send_log() << resetfmt << endlog();
 	}
-
 }
 
 void HerkulexDriver::waitSendPacketDL() 
 {
 	// Wait until all data is written to port.
+	// See comment in for sendPacketDL().
 	if (TEMP_FAILURE_RETRY(tcdrain(port_fd)) == -1) {
-		log(ERROR) << "tcdrain() failed: " << strerror(errno) << endlog(); 
+		send_log(ERROR) << "tcdrain() failed: " << strerror(errno) << endlog();
 		this->exception();
 		return;
 	}
