@@ -266,8 +266,9 @@ void HerkulexSched::updateHook()
 				break;
 			}
 			// Forward all incoming messages to CM interface while waiting sync or before start polling.
-			while (!ack_buffer.empty()) {
+			while (true) {
 				HerkulexPacket * cm_ack_pkt = ack_buffer.PopWithoutRelease();
+				if (cm_ack_pkt == nullptr) break; // ack_buffer is empty
 				if (receivePacketCM.ready()) {
 					receivePacketCM(*cm_ack_pkt);
 				}
@@ -355,8 +356,9 @@ void HerkulexSched::updateHook()
 				break;
 			}
 
-			while (!ack_buffer.empty()) {
+			while (true) {
 				HerkulexPacket * ack_pkt = ack_buffer.PopWithoutRelease();
+				if (ack_pkt == nullptr) break; // cm_req_buffer is empty
 				double pos, vel;
 				servo::Status status;
 				if (! detailed_state) {
@@ -422,18 +424,23 @@ void HerkulexSched::updateHook()
 				break;
 			}
 
-			// send and receive packets completely asyncronically
-			while (!ack_buffer.empty()) {
+			// foward received packets to CM layer
+			while (true) {
 				HerkulexPacket * cm_ack_pkt = ack_buffer.PopWithoutRelease();
+				if (cm_ack_pkt == nullptr) break; // ack_buffer is empty
 				if (receivePacketCM.ready()) {
 					receivePacketCM(*cm_ack_pkt);
 				}
 				ack_buffer.Release(cm_ack_pkt);
 			}
-			if (!cm_req_buffer.empty()) {
+
+			// process requests from CM layer
+			{
 				HerkulexPacket * cm_req_pkt = cm_req_buffer.PopWithoutRelease();
-				sendPacketDL(*cm_req_pkt);
-				cm_req_buffer.Release(cm_req_pkt);
+				if (cm_req_pkt != nullptr) {  // cm_req_buffer is not empty
+					sendPacketDL(*cm_req_pkt);
+					cm_req_buffer.Release(cm_req_pkt);
+				}
 				if (!cm_req_buffer.empty()) this->trigger();
 			}
 			break;

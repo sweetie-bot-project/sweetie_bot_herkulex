@@ -1006,9 +1006,8 @@ bool HerkulexArray::sendRequest(const HerkulexPacket& req, servo::HerkulexServo:
 				MutexLock lock(ack_mutex);
 				while(ack_buffer.empty() && timeout_timer.isArmed(TIMEOUT_TIMER_ID) && !break_loop_flag ) ack_cond.wait(ack_mutex);
 			}
-			if (!ack_buffer.empty()) {
-				pkt_ack = ack_buffer.PopWithoutRelease();
-				//TODO invalid packet flag check
+			pkt_ack = ack_buffer.PopWithoutRelease();
+			if (pkt_ack != nullptr) { // packet is received
 				success = ack_callback(*pkt_ack);
 
 				if (log(DEBUG)) {
