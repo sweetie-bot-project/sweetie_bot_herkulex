@@ -84,8 +84,11 @@ HerkulexSched::HerkulexSched(std::string const& name) :
 	this->addProperty("poll_round_size", poll_round_size)
 		.doc("Maximal number of servos to be polled during RT_READ round. Negative value means attempt to poll all servos.")
 		.set(-1);
-	this->addProperty("timeout", timeout)
+	this->addProperty("timeout", req_timeout)
 		.doc("Servo request timeout (sec).")
+		.set(0.005);
+	this->addProperty("req_period", req_period)
+		.doc("Servo request period (sec). During RT_READ round requets to servo is sent every req_period.")
 		.set(0.005);
 	
 	// OPERATIONS: DATA LINK INTERFACE
@@ -208,13 +211,110 @@ bool HerkulexSched::startHook()
 	return true;
 }
 
+void HerkulexSched::forwardAckPackagesToCM() 
+{
+	while (true) {
+		HerkulexPacket * ack_pkt = ack_buffer.PopWithoutRelease();
+		if (ack_pkt == nullptr) break; // ack_buffer is empty
+		if (receivePacketCM.ready()) {
+			receivePacketCM(*ack_pkt);
+		}
+		ack_buffer.Release(ack_pkt);
+	}
+}
+
+void HerkulexSched::checkRTAckPackages()
+{
+	// check if ack buffer contains responces to RT requests
+	// any other valid packages are rerouted to CM level
+	
+	while (true) {
+		HerkulexPacket * ack_pkt = ack_buffer.PopWithoutRelease();
+		if (ack_pkt == nullptr) break; // ack_buffer is empty
+
+		double pos, vel;
+		servo::Status status;
+		bool success = false;
+		// check if received packet is responce to one of previous requests
+		// the front of the queue contains the oldest requests
+		auto poll_index_it = poll_index_ack_queue.begin();
+		for(; poll_index_it !=  poll_index_ack_queue.end(); poll_index_it++) {
+			if (! detailed_state) {
+				success = ackPosVel(*ack_pkt, poll_list[*poll_index_it], pos, vel, status);
+			}
+			else {
+				success = ackPosVelExtended(*ack_pkt, poll_list[*poll_index_it], states, status) ;
+			}
+			if (success) break;
+		}
+
+		if (success) {
+			// now save request results
+			if (!detailed_state) {
+				states.name.push_back(poll_list[*poll_index_it]);
+				states.pos.push_back(pos);
+				states.vel.push_back(vel);
+				states.status_error.push_back(status.error);
+				states.status_detail.push_back(status.detail);
+			}
+			else {
+				pos = states.pos.back();
+				vel = states.vel.back();
+			}
+			joints.name.push_back(poll_list[*poll_index_it]);
+			joints.position.push_back(pos);
+			joints.velocity.push_back(vel);
+
+#ifdef SCHED_STATISTICS
+			statistics.rt_read_n_errors += poll_index_it - poll_index_ack_queue.begin();
+			statistics.rt_read_n_successes++;
+			statistics.rt_read_req_durationN = timer.timeRemaining(REQUEST_TIMEOUT_TIMER);
+			if (statistics.rt_read_n_successes + statistics.rt_read_n_errors == 0) {
+				//statistics.rt_read_req_duration1 = time_service->secondsSince(statistics_sync_timestamp) - statistics.rt_read_start_time;
+				statistics.rt_read_req_duration1 = statistics.rt_read_req_durationN;
+			}
+			if (status != 0) statistics.last_erroneous_status = status;
+#endif /* SCHED_STATISTICS */
+
+			// pop out of queue current request and all which preceeds it
+			poll_index_ack_queue.dequeue(poll_index_it);
+
+			if (log(DEBUG)) {
+				log() << "RT ACK packet: servo_id: " << (int) ack_pkt->servo_id << " cmd: " << (int) ack_pkt->command << " data(" << ack_pkt->data.size() << ") ";
+				// log() << std::dec << std::setw(2) << std::setfill('0');
+				// for(auto c = ack_pkt->data.begin(); c != ack_pkt->data.end(); c++) log() << (int) *c << " ";
+				log() << "pos = " << pos << " vel = " << vel << " ack_wait_queue_size = " << poll_index_ack_queue.size() << endlog();
+			}
+		}
+		else {
+			// packet is not RT request responce. Reroute it to CM layer.
+			if (receivePacketCM.ready()) {
+				receivePacketCM(*ack_pkt);
+			}
+
+			if (log(DEBUG)) {
+				log() << "Unexpected ACK packet: servo_id: " << (int) ack_pkt->servo_id << " cmd: " << (int) ack_pkt->command << " data(" << ack_pkt->data.size() << ") ";
+				// log() << std::dec << std::setw(2) << std::setfill('0');
+				// for(auto c = ack_pkt->data.begin(); c != ack_pkt->data.end(); c++) log() << (int) *c << " ";
+				log() << "ack_wait_queue_size = " << poll_index_ack_queue.size() << endlog();
+			}
+		}
+		// release packet
+		ack_buffer.Release(ack_pkt);
+	}
+}
+
 void HerkulexSched::updateHook()
 {
 	bool success;
 	SchedTimer::TimerId timer_id;
 
 	if (log(DEBUG)) {
-		log() << "updateHook: sched_state = " << sched_state << " timeout_timer = " << timer.timeRemaining(REQUEST_TIMEOUT_TIMER) << " round_timer = " << timer.timeRemaining(ROUND_TIMER) << endlog();
+		log() << "updateHook: sched_state = " << sched_state 
+			<< " ack_queue_size = " << poll_index_ack_queue.size()
+			<< " period_timer = " << timer.timeRemaining(REQUEST_PERIOD_TIMER) 
+			<< " timeout_timer = " << timer.timeRemaining(REQUEST_TIMEOUT_TIMER) 
+			<< " round_timer = " << timer.timeRemaining(ROUND_TIMER) << endlog();
 	}
 	
 	switch (sched_state) {
@@ -236,10 +336,10 @@ void HerkulexSched::updateHook()
 					sendPacketDL(req_pkt);
 
 					if (log(DEBUG)) {
-						log() << "Start RT round." << std::endl;
-						log() << std::dec << std::setw(2) << std::setfill('0');
-						log() << "REQ packet: servo_id: "  << (int) req_pkt.servo_id << " cmd: " << (int) req_pkt.command << " data(" << req_pkt.data.size() << "): ";
-						for(auto c = req_pkt.data.begin(); c != req_pkt.data.end(); c++) log() << (int) *c << " ";
+						log() << "Start RT_JOG round." << std::endl;
+						log() << "REQ packet: servo_id: "  << (int) req_pkt.servo_id << " cmd: " << (int) req_pkt.command << " data(" << req_pkt.data.size() << ") ";
+						// log() << std::dec << std::setw(2) << std::setfill('0');
+						// for(auto c = req_pkt.data.begin(); c != req_pkt.data.end(); c++) log() << (int) *c << " ";
 						log() << resetfmt << endlog();
 					}
 				}
@@ -253,6 +353,7 @@ void HerkulexSched::updateHook()
 					poll_end_index = poll_index + poll_round_size;
 					if (poll_end_index > poll_list.size()) poll_end_index = poll_list.size();
 				}
+				poll_index_ack_queue.clear();
 				clearPortBuffers();
 
 				if (! waitSendPacketDL.ready()) {
@@ -266,13 +367,7 @@ void HerkulexSched::updateHook()
 				break;
 			}
 			// Forward all incoming messages to CM interface while waiting sync or before start polling.
-			while (!ack_buffer.empty()) {
-				HerkulexPacket * cm_ack_pkt = ack_buffer.PopWithoutRelease();
-				if (receivePacketCM.ready()) {
-					receivePacketCM(*cm_ack_pkt);
-				}
-				ack_buffer.Release(cm_ack_pkt);
-			}
+			forwardAckPackagesToCM();
 			break;
 
 		case SEND_JOG_WAIT:
@@ -284,14 +379,76 @@ void HerkulexSched::updateHook()
 			sched_state = SEND_READ_REQ;
 			timer.arm(ROUND_TIMER, period_RT_read);
 #ifdef SCHED_STATISTICS
-				statistics.rt_read_start_time = time_service->secondsSince(statistics_sync_timestamp);
+			statistics.rt_read_start_time = time_service->secondsSince(statistics_sync_timestamp);
 #endif /* SCHED_STATISTICS */
 
+			log(DEBUG) << "Start RT_READ round." << std::endl;
+
 		case SEND_READ_REQ:
+			// in this state scheduler sends RT read requests
 
 			if (poll_index >= poll_end_index || !timer.isArmed(ROUND_TIMER)) {
-				// RT round is finished
+				// switch to next state:
+				// there are no more requests to send or RT round is finised
 				timer.killTimer(ROUND_TIMER);
+
+				// waiting for the responce of the last servo 
+				sched_state = WAIT_READ_ACK;
+				this->trigger();
+				break;
+			}
+			if (!timer.isArmed(REQUEST_PERIOD_TIMER) || poll_index_ack_queue.empty()) {
+				// send next RT read request:
+				// request period timer fired or all ACK packages is received
+
+				// form request package
+				if (! detailed_state) {
+					success = reqPosVel(req_pkt, poll_list[poll_index]);
+				}
+				else {
+					success = reqPosVelExtended(req_pkt, poll_list[poll_index]);
+				}
+				if (!success) {
+					// skip servo
+					poll_index++;
+					this->trigger();
+					break;
+				}
+				// add poll index of coresponding servo to ack wait list
+				poll_index_ack_queue.enqueue(poll_index);
+				// switch to next servo
+				poll_index++;
+	
+				timer.arm(REQUEST_PERIOD_TIMER, this->req_period);
+				timer.arm(REQUEST_TIMEOUT_TIMER, this->req_timeout);
+				sendPacketDL(req_pkt);
+
+				if (log(DEBUG)) {
+					log() << "RT REQ packet: servo_id: "  << (int) req_pkt.servo_id << " cmd: " << (int) req_pkt.command << " data(" << req_pkt.data.size() << ") ";
+					// log() << std::hex << std::setw(2) << std::setfill('0');
+					// for(auto c = req_pkt.data.begin(); c != req_pkt.data.end(); c++) log() << (int) *c << " ";
+					log() << resetfmt << endlog();
+				}
+			}
+
+			// check is any ACK packet is received
+			checkRTAckPackages();
+
+			if (poll_index_ack_queue.empty()) {
+				// no more packets to wait: procced to next request
+				this->trigger();
+			}
+			break;
+		
+		case WAIT_READ_ACK:
+			// RT round is almost finished: scheduler waits for the response of the last servo.
+			if (!poll_index_ack_queue.empty() && timer.isArmed(REQUEST_TIMEOUT_TIMER)) {
+				// check if we have received RT package
+				checkRTAckPackages();
+			}
+			if (poll_index_ack_queue.empty() || !timer.isArmed(REQUEST_TIMEOUT_TIMER)) {
+				// no more packets to wait or request timeout is expired
+				// publish joint states and statistics
 
 				ros::Time timestamp = ros::Time::now();
 				joints.header.stamp = timestamp;
@@ -302,110 +459,19 @@ void HerkulexSched::updateHook()
 
 #ifdef SCHED_STATISTICS
 				statistics.cm_start_time = time_service->secondsSince(statistics_sync_timestamp);
+				statistics.rt_read_n_errors += poll_index_ack_queue.size();
 				statistics_port.write(statistics);
 #endif /* SCHED_STATISTICS */
+				
+				// clear wait queue
+				poll_index_ack_queue.clear();	
 
-				// start configuration and monitoring round
+				timer.arm(ROUND_TIMER, this->period_CM);
 				sched_state = CM_ROUND;
-				timer.arm(ROUND_TIMER, period_CM);
-
 				log(DEBUG) << "Start CM round." << endlog();
 
 				this->trigger();
 				break;
-			}
-			// form request to servo
-			if (! detailed_state) {
-				success = reqPosVel(req_pkt, poll_list[poll_index]);
-			}
-			else {
-				success = reqPosVelExtended(req_pkt, poll_list[poll_index]);
-			}
-			if (!success) {
-				// skip servo
-				poll_index++;
-				this->trigger();
-				break;
-			}
-		
-			timer.arm(REQUEST_TIMEOUT_TIMER, this->timeout);
-			sendPacketDL(req_pkt);
-
-			if (log(DEBUG)) {
-				log() << std::dec << std::setw(2) << std::setfill('0');
-				log() << "REQ packet: servo_id: "  << (int) req_pkt.servo_id << " cmd: " << (int) req_pkt.command << " data(" << req_pkt.data.size() << "): ";
-				for(auto c = req_pkt.data.begin(); c != req_pkt.data.end(); c++) log() << (int) *c << " ";
-				log() << resetfmt << endlog();
-			}
-
-			sched_state = RECEIVE_READ_ACK;
-			break;
-			
-		case RECEIVE_READ_ACK:
-
-			if (!timer.isArmed(REQUEST_TIMEOUT_TIMER)) {
-				poll_index++;
-				sched_state = SEND_READ_REQ;
-#ifdef SCHED_STATISTICS
-				statistics.rt_read_n_errors++;
-#endif /* SCHED_STATISTICS */
-				log(DEBUG) << "ACK timeout" << endlog();
-
-				this->trigger();
-				break;
-			}
-
-			while (!ack_buffer.empty()) {
-				HerkulexPacket * ack_pkt = ack_buffer.PopWithoutRelease();
-				double pos, vel;
-				servo::Status status;
-				if (! detailed_state) {
-					success = ackPosVel(*ack_pkt, poll_list[poll_index], pos, vel, status);
-				}
-				else {
-					success = ackPosVelExtended(*ack_pkt, poll_list[poll_index], states, status) ;
-					pos = states.pos.back();
-					vel = states.vel.back();
-				}
-				if (success && log(DEBUG)) {
-					log() << std::dec << std::setw(2) << std::setfill('0');
-					log() << "ACK packet: servo_id: " << (int) ack_pkt->servo_id << " cmd: " << (int) ack_pkt->command << " data(" << ack_pkt->data.size() << "): ";
-					for(auto c = ack_pkt->data.begin(); c != ack_pkt->data.end(); c++) log() << (int) *c << " ";
-					log() << resetfmt << std::endl << "pos = " << pos << " vel = " << vel << endlog();
-				}
-				ack_buffer.Release(ack_pkt);
-
-				if (success) {
-					// save request results
-					joints.name.push_back(poll_list[poll_index]);
-					joints.position.push_back(pos);
-					joints.velocity.push_back(vel);
-					if (!detailed_state) {
-						states.name.push_back(poll_list[poll_index]);
-						states.pos.push_back(pos);
-						states.vel.push_back(vel);
-						states.status_error.push_back(status.error);
-						states.status_detail.push_back(status.detail);
-					}
-#ifdef SCHED_STATISTICS
-					statistics.rt_read_req_durationN = timeout - timer.timeRemaining(REQUEST_TIMEOUT_TIMER);
-					if (statistics.rt_read_n_successes + statistics.rt_read_n_errors == 0) {
-						statistics.rt_read_req_duration1 = statistics.rt_read_req_durationN;
-					}
-					statistics.rt_read_n_successes++;
-#endif /* SCHED_STATISTICS */
-
-					timer.killTimer(REQUEST_TIMEOUT_TIMER);
-					poll_index++;
-					sched_state = SEND_READ_REQ;
-					this->trigger();
-					break;
-				}
-#ifdef SCHED_STATISTICS
-				else {
-					statistics.last_erroneous_status = status;
-				}
-#endif /* SCHED_STATISTICS */
 			}
 			break;
 
@@ -422,25 +488,23 @@ void HerkulexSched::updateHook()
 				break;
 			}
 
-			// send and receive packets completely asyncronically
-			while (!ack_buffer.empty()) {
-				HerkulexPacket * cm_ack_pkt = ack_buffer.PopWithoutRelease();
-				if (receivePacketCM.ready()) {
-					receivePacketCM(*cm_ack_pkt);
-				}
-				ack_buffer.Release(cm_ack_pkt);
-			}
-			if (!cm_req_buffer.empty()) {
+			// process requests from CM layer
+			{
 				HerkulexPacket * cm_req_pkt = cm_req_buffer.PopWithoutRelease();
-				sendPacketDL(*cm_req_pkt);
-				cm_req_buffer.Release(cm_req_pkt);
+				if (cm_req_pkt != nullptr) {  // cm_req_buffer is not empty
+					sendPacketDL(*cm_req_pkt);
+					cm_req_buffer.Release(cm_req_pkt);
+				}
 				if (!cm_req_buffer.empty()) this->trigger();
 			}
-			break;
+			// foward received packets to CM layer
+			forwardAckPackagesToCM();
 
+			break;
 	} // case (sched_state)
 }
 				
+
 
 void HerkulexSched::receivePacketDL(const HerkulexPacket& pkt) 
 {

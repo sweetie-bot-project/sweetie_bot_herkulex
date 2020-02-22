@@ -28,16 +28,31 @@ control movements and etc.
     submodules can function simulteniously.
 
 The start of next control cycle is triggered by `sync` port messages. Duration of rounds are chosen via `HerkulexSched` component properties.
+
+* `period_RT_JOG` --- duration of `RT_JOG` round. At it beginning JOG command is sent. It should be longer then transit time of JOG command plus processing time of servo MC.
+* `period_RT_read` --- during this round read request are being sent to the servos from poll list. The next request is sent each `req_period` seconds. If response to previous 
+    request is recieved before `req_period` timer fires then the next request is sent immediately.
+* `period_CM` --- during this period requests from HerkulexArray is being forwarded to servos.
+* `timeout` ---  how long scheduler is waiting for servo response during `RT_READ` round before assume that packet is missing,
+* `req_period` ---  maximal time between two requests during `RT_READ` round. If it is less then `timeout` scheduler do not wait for the response before it starts the next request.
+    It allows use duplex link with servos effectively.
+
 `period_CM`, `period_RT_read`, `period_RT_JOG` properties declare time periods when a command *can be send to servo*. So actual duration of time rounds 
 may be on `timeout` longer. `timeout` declare maximal duration of one exchange operation (send command to and receive answer from servo).
 
     min_control_cyle_duration = period_RT_JOG + (period_RT_read + timeout) + (period_CM + timeout) 
                                                    RT read exchange round     CM exchange round
 
+Typically during `RT_READ` round the scheduler is able to poll 
+
+    ceil( period_RT_read / req_period )
+
+servos.
+
 Servo array configuration can be loaded to `HerkulexArray` properties from OROCOS `*.cpf` file. Example configuration for two servos is provided in `scripts/test_servo_array.cpf`
 
 *Configuration hints*: 
-* At 115600 baurdrate use 4-5 ms `timeout` value. 
+* At 115600 baurdrate use 5 ms `timeout` value and 2-3 ms `req_period`.
 * It is better to set `period_RT_JOG` to `SJOG` command duration (depends on number of servos) plus 2-3 ms. During this time servos would be able process received command.
 * Set `period_RT_read` to `(poll_round_size-1)*timeout + 1 ms`. So maximal duration of `RT_read` round would be `poll_round_size*timeout + 1 ms`
 * Control cycle duration can be controlled using external timer component from OCL library.
@@ -46,12 +61,11 @@ Servo array configuration can be loaded to `HerkulexArray` properties from OROCO
 
 1. `HerkulexDriver` `waitSendPacket()` operation does not function properly with USB-to-serial converters due to `tcdrain()` syscall returns control prematurely.
     So if actual `JOG` request execution time is larger then `period_RT_JOG` this can cause next read operation timeout.
-1. `HerkulexDriver` reset receiver state after each send operations. So it is impossible efficiently mix commands with ACK and without ACK.
 2. `HerkulexArray` read `in_goals` port one time  per control cycle. This can cause unwanted behaviour in presence of multiple writers or if port bufferization is turned on.
 
 ### Konown issues
 
-if `reset_delay` property of HerkulexArray is to small it is unable to reset and discover servos. In some cases it can case unpredictable servo behavior 
+If `reset_delay` property of HerkulexArray is too small it is unable to reset and discover servos. Sometimes it can case unpredictable servo behavior 
 probably due command misinterpretation.
 
 ### Usage
