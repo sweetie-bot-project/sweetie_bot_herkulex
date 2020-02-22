@@ -88,7 +88,7 @@ HerkulexSched::HerkulexSched(std::string const& name) :
 		.doc("Servo request timeout (sec).")
 		.set(0.005);
 	this->addProperty("req_period", req_period)
-		.doc("Servo request period (sec).")
+		.doc("Servo request period (sec). During RT_READ round requets to servo is sent every req_period.")
 		.set(0.005);
 	
 	// OPERATIONS: DATA LINK INTERFACE
@@ -276,11 +276,13 @@ void HerkulexSched::checkRTAckPackages()
 			if (status != 0) statistics.last_erroneous_status = status;
 #endif /* SCHED_STATISTICS */
 
-			// pop out of queue current reqest and all which preceeds it
+			// pop out of queue current request and all which preceeds it
 			poll_index_ack_queue.dequeue(poll_index_it);
 
 			if (log(DEBUG)) {
 				log() << "RT ACK packet: servo_id: " << (int) ack_pkt->servo_id << " cmd: " << (int) ack_pkt->command << " data(" << ack_pkt->data.size() << ") ";
+				// log() << std::dec << std::setw(2) << std::setfill('0');
+				// for(auto c = ack_pkt->data.begin(); c != ack_pkt->data.end(); c++) log() << (int) *c << " ";
 				log() << "pos = " << pos << " vel = " << vel << " ack_wait_queue_size = " << poll_index_ack_queue.size() << endlog();
 			}
 		}
@@ -291,9 +293,9 @@ void HerkulexSched::checkRTAckPackages()
 			}
 
 			if (log(DEBUG)) {
-				log() << std::dec << std::setw(2) << std::setfill('0');
-				log() << "Unexpected ACK packet: servo_id: " << (int) ack_pkt->servo_id << " cmd: " << (int) ack_pkt->command << " data(" << ack_pkt->data.size() << "): ";
-				for(auto c = ack_pkt->data.begin(); c != ack_pkt->data.end(); c++) log() << (int) *c << " ";
+				log() << "Unexpected ACK packet: servo_id: " << (int) ack_pkt->servo_id << " cmd: " << (int) ack_pkt->command << " data(" << ack_pkt->data.size() << ") ";
+				// log() << std::dec << std::setw(2) << std::setfill('0');
+				// for(auto c = ack_pkt->data.begin(); c != ack_pkt->data.end(); c++) log() << (int) *c << " ";
 				log() << "ack_wait_queue_size = " << poll_index_ack_queue.size() << endlog();
 			}
 		}
@@ -309,7 +311,7 @@ void HerkulexSched::updateHook()
 
 	if (log(DEBUG)) {
 		log() << "updateHook: sched_state = " << sched_state 
-			<< " ack_quuue_size = " << poll_index_ack_queue.size()
+			<< " ack_queue_size = " << poll_index_ack_queue.size()
 			<< " period_timer = " << timer.timeRemaining(REQUEST_PERIOD_TIMER) 
 			<< " timeout_timer = " << timer.timeRemaining(REQUEST_TIMEOUT_TIMER) 
 			<< " round_timer = " << timer.timeRemaining(ROUND_TIMER) << endlog();
@@ -334,10 +336,10 @@ void HerkulexSched::updateHook()
 					sendPacketDL(req_pkt);
 
 					if (log(DEBUG)) {
-						log() << "Start RT round." << std::endl;
-						log() << std::dec << std::setw(2) << std::setfill('0');
-						log() << "REQ packet: servo_id: "  << (int) req_pkt.servo_id << " cmd: " << (int) req_pkt.command << " data(" << req_pkt.data.size() << "): ";
-						for(auto c = req_pkt.data.begin(); c != req_pkt.data.end(); c++) log() << (int) *c << " ";
+						log() << "Start RT_JOG round." << std::endl;
+						log() << "REQ packet: servo_id: "  << (int) req_pkt.servo_id << " cmd: " << (int) req_pkt.command << " data(" << req_pkt.data.size() << ") ";
+						// log() << std::dec << std::setw(2) << std::setfill('0');
+						// for(auto c = req_pkt.data.begin(); c != req_pkt.data.end(); c++) log() << (int) *c << " ";
 						log() << resetfmt << endlog();
 					}
 				}
@@ -377,8 +379,10 @@ void HerkulexSched::updateHook()
 			sched_state = SEND_READ_REQ;
 			timer.arm(ROUND_TIMER, period_RT_read);
 #ifdef SCHED_STATISTICS
-				statistics.rt_read_start_time = time_service->secondsSince(statistics_sync_timestamp);
+			statistics.rt_read_start_time = time_service->secondsSince(statistics_sync_timestamp);
 #endif /* SCHED_STATISTICS */
+
+			log(DEBUG) << "Start RT_READ round." << std::endl;
 
 		case SEND_READ_REQ:
 			// in this state scheduler sends RT read requests
@@ -410,7 +414,7 @@ void HerkulexSched::updateHook()
 					this->trigger();
 					break;
 				}
-				// poll index of coresponding servo to ack wait list
+				// add poll index of coresponding servo to ack wait list
 				poll_index_ack_queue.enqueue(poll_index);
 				// switch to next servo
 				poll_index++;
@@ -420,9 +424,9 @@ void HerkulexSched::updateHook()
 				sendPacketDL(req_pkt);
 
 				if (log(DEBUG)) {
-					log() << std::dec << std::setw(2) << std::setfill('0');
-					log() << "RT REQ packet: servo_id: "  << (int) req_pkt.servo_id << " cmd: " << (int) req_pkt.command << " data(" << req_pkt.data.size() << "): ";
-					for(auto c = req_pkt.data.begin(); c != req_pkt.data.end(); c++) log() << (int) *c << " ";
+					log() << "RT REQ packet: servo_id: "  << (int) req_pkt.servo_id << " cmd: " << (int) req_pkt.command << " data(" << req_pkt.data.size() << ") ";
+					// log() << std::hex << std::setw(2) << std::setfill('0');
+					// for(auto c = req_pkt.data.begin(); c != req_pkt.data.end(); c++) log() << (int) *c << " ";
 					log() << resetfmt << endlog();
 				}
 			}
