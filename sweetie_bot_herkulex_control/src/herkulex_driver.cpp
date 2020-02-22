@@ -349,6 +349,7 @@ void HerkulexDriver::updateHook()
 			recv_buffer_size -= recv_buffer_header_index;
 			recv_buffer_index -= recv_buffer_header_index;
 			memmove(recv_buffer, recv_buffer + recv_buffer_header_index, recv_buffer_size);
+			recv_buffer_header_index = 0;
 		}
 
 		if (recv_buffer_size == sizeof(recv_buffer)) {
