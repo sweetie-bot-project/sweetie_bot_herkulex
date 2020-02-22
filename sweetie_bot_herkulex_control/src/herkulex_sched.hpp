@@ -27,7 +27,7 @@ class HerkulexSched : public RTT::TaskContext
 
 	protected:
 		enum SchedulerState {
-			SEND_JOG, SEND_JOG_WAIT, SEND_READ_REQ, RECEIVE_READ_ACK, CM_ROUND
+			SEND_JOG, SEND_JOG_WAIT, SEND_READ_REQ, WAIT_READ_ACK, CM_ROUND
 		};
 
 		typedef sweetie_bot_herkulex_msgs::HerkulexPacket HerkulexPacket;
@@ -39,14 +39,62 @@ class HerkulexSched : public RTT::TaskContext
 		class SchedTimer : public RTT::os::Timer {
 				HerkulexSched * owner;
 			public:
-				SchedTimer(HerkulexSched * _owner) : Timer(2, ORO_SCHED_RT, RTT::os::HighestPriority), owner(_owner) {}
+				SchedTimer(HerkulexSched * _owner) : Timer(3, ORO_SCHED_RT, RTT::os::HighestPriority), owner(_owner) {}
 				void timeout(TimerId id) {
 					owner->trigger();
 				}
 		};
 		enum SchedTimers {
-			REQUEST_TIMEOUT_TIMER = 0,
-			ROUND_TIMER = 1,
+			REQUEST_PERIOD_TIMER = 0,
+			REQUEST_TIMEOUT_TIMER = 1,
+			ROUND_TIMER = 2,
+		};
+
+		template <typename T, size_t N> class Queue
+		{
+			public:
+				typedef typename std::array<T, N>::iterator iterator;
+				typedef typename std::array<T, N>::const_iterator const_iterator;
+			private:
+				std::array<T, N> values;
+				iterator tail;
+			public:
+				Queue() { tail = values.begin(); }
+
+				iterator enqueue(const T& value) {
+					if (tail == values.end()) dequeue();
+					*tail = value;
+					return tail++;
+				}
+				bool dequeue() {
+					if (tail == values.begin()) return false;
+					for(iterator it = values.begin(); it + 1 != tail; it++)
+						*it = *(it + 1);
+					tail--;
+					return true;
+				}
+				bool dequeue(T& value) {
+					if (tail == values.begin()) return false;
+					value = values.front();
+					return dequeue();
+				}
+				bool dequeue(iterator it) {
+					if (it == tail) return false;
+					it++;
+					iterator dst = begin();
+					while (it != tail) *(dst++) = *(it++); 
+					tail = dst;
+					return true;
+				}
+				void clear() { tail = values.begin(); }
+				bool empty() { return tail == values.begin(); }
+				bool full() { return tail == values.end(); }
+				size_t size() { return tail - values.begin(); }
+				size_t capacity() { return N; }
+				iterator begin() { return values.begin(); }
+				iterator end() { return tail; }
+				const_iterator begin() const { return values.begin(); }
+				const_iterator end() const { return tail; }
 		};
 
 	protected:
@@ -60,6 +108,7 @@ class HerkulexSched : public RTT::TaskContext
 		SchedulerState sched_state;
 		int poll_index;
 		int poll_end_index;
+		Queue<int, 2> poll_index_ack_queue;
 		// package buffers
 		RTT::base::BufferLockFree<HerkulexPacket> cm_req_buffer;
 		RTT::base::BufferLockFree<HerkulexPacket> ack_buffer;
@@ -91,14 +140,17 @@ class HerkulexSched : public RTT::TaskContext
 		double period_RT_JOG;
 		double period_RT_read;
 		double period_CM;
+		double req_timeout;
+		double req_period;
 		bool detailed_state;
 		std::vector<std::string> poll_list;
 		int poll_round_size;
-		double timeout;
 
 	protected:
 		// helper funcions
 		void clearPortBuffers();
+		void checkRTAckPackages();
+		void forwardAckPackagesToCM();
 
 	protected:
 		// OPERATIONS: DATA LINK INTERFACE
