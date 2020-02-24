@@ -51,6 +51,7 @@ add_message_files(
   HerkulexJointState.msg
   HerkulexSchedStatistics.msg
   ServoGoal.msg
+  ServoCommands.msg
   Status.msg
 )
 

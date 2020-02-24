@@ -27,6 +27,8 @@ connectOperations("herk_sched.sendPacketDL", "herk_driver.sendPacket");
 connectOperations("herk_driver.receivePacket", "herk_sched.receivePacketDL");
 connectServices("herk_array","herk_sched");
 stream("herk_array.out_states", ros.comm.topic("/herkulex/servo_states"))
+stream("herk_array.commands", ros.comm.topic("/herkulex/servo_commands"))
+
 stream("herk_sched.out_states", ros.comm.topic("/herkulex/joint_states"))
 
 # Scheduler waits for completion of JOG command if those operations are connected.
@@ -71,6 +73,6 @@ herk_driver.configure;
 # Driver must be active when arraty is configurated.
 herk_driver.start;
 
-herk_sched.configure;
-herk_array.configure;
-herk_array.start;
+herk_sched.configure();
+herk_array.configure();
+herk_array.start();

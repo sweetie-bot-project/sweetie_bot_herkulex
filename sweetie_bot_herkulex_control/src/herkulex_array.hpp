@@ -15,6 +15,7 @@
 #include <sweetie_bot_herkulex_msgs/typekit/HerkulexPacket.h>
 #include <sweetie_bot_herkulex_msgs/typekit/HerkulexJointState.h>
 #include <sweetie_bot_herkulex_msgs/typekit/HerkulexState.h>
+#include <sweetie_bot_herkulex_msgs/typekit/ServoCommands.h>
 #include <sweetie_bot_herkulex_msgs/typekit/ServoGoal.h>
 
 #include "herkulex_servo.hpp"
@@ -29,7 +30,9 @@ class HerkulexArray : public RTT::TaskContext
 		typedef sweetie_bot_herkulex_msgs::HerkulexPacket HerkulexPacket;
 		typedef sweetie_bot_herkulex_msgs::HerkulexJointState HerkulexJointState;
 		typedef sweetie_bot_herkulex_msgs::HerkulexState HerkulexState;
+		typedef sweetie_bot_herkulex_msgs::ServoCommands ServoCommands;
 		typedef sweetie_bot_herkulex_msgs::ServoGoal ServoGoal;
+
 
 	protected:
 		class TimeoutTimer : public RTT::os::Timer 
@@ -74,6 +77,7 @@ class HerkulexArray : public RTT::TaskContext
 		RTT::os::Condition ack_cond;
 		TimeoutTimer timeout_timer;
 		HerkulexState state;
+		ServoCommands commands;
 		const TimeoutTimer::TimerId TIMEOUT_TIMER_ID = 0;
 		// internals
 		bool break_loop_flag;
@@ -92,6 +96,8 @@ class HerkulexArray : public RTT::TaskContext
 		// PORTS
 		RTT::OutputPort<sensor_msgs::JointState> joints_port;
 		RTT::OutputPort<HerkulexState> states_port;
+		RTT::InputPort<ServoCommands> commands_port;
+
 		// OPERATIONS: PROVIDED (low level interface)
 		void receivePacketCM(const HerkulexPacket& pkt);
 		// OPERATIONS: REQUIRED (low level interface)

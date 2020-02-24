@@ -104,6 +104,7 @@ HerkulexArray::HerkulexArray(std::string const& name) :
 	// PORTS
 	this->addPort("out_joints", joints_port).doc("Publish JointState by request.");
 	this->addPort("out_states", states_port).doc("Publish HerkulexState by request.");
+	this->addPort("commands", commands_port).doc("Listen for commands");
 
 	// OPERATIONS
 	// Data link interface
@@ -325,6 +326,7 @@ bool HerkulexArray::configureHook()
 	ack_buffer.data_sample(req_pkt);
 	state.header.seq = 0;
 	states_port.setDataSample(state);
+	commands_port.getDataSample(commands);
 
 	//Check if sendPacketCM is available.
 	if (!sendPacketCM.ready()) {
@@ -1049,7 +1051,7 @@ bool HerkulexArray::startHook()
 
 void HerkulexArray::updateHook()
 {
-	// invoke servo status mobitor code
+	// invoke servo status monitor code
 	servo::HerkulexServo * s = monitor_iter->second.get();
 	try {
 		servo::Status status;
@@ -1106,15 +1108,40 @@ void HerkulexArray::updateHook()
 	}
 	catch (const std::out_of_range& e) {
 		monitor_iter = servos.begin();
-		log(ERROR) << e.what() << endlog();
+		log(WARN) << e.what() << endlog();
 	}
 
 	// move monitor iterator to next servo
 	monitor_iter++;
 	if (monitor_iter == servos.end()) monitor_iter = servos.begin();
+
+	// processing servo commands
+	if (commands_port.read(commands, false)== NewData)
+	{
+		for(auto &servo_name : commands.name)
+		{
+			try
+			{
+				if(commands.command & ServoCommands::CLEAR_ERROR)
+				{
+					this->clearStatus(servo_name);
+					this->setRegisterRAM(servo_name, "led_control", 0);
+				}
+				if(commands.command & ServoCommands::RESET)
+					this->resetServo(servo_name);
+				if(commands.command & ServoCommands::TORQUE_ON)
+					this->setTorqueFree(servo_name, false);
+				if(commands.command & ServoCommands::TORQUE_OFF)
+					this->setTorqueFree(servo_name, true);
+			}
+			catch (const std::out_of_range&) {
+				continue;
+			}
+		}
+	}
 }
 
-void HerkulexArray::stopHook() 
+void HerkulexArray::stopHook()
 {
 }
 
