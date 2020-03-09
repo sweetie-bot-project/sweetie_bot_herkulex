@@ -1,5 +1,7 @@
 #include "herkulex_servo.hpp"
+
 #include <stdexcept>
+#include <limits>
 
 namespace herkulex {
 
@@ -23,9 +25,21 @@ HerkulexServo::HerkulexServo(const std::string& _name, const RegisterMapper& _ma
 	hw_id(_hw_id),
 	reverse(_reverse),
 	offset(_offset),
-	scale(_scale)
-{
-}
+	scale(_scale),
+	min_position( std::numeric_limits< decltype(min_position) >::min() ),
+	max_position( std::numeric_limits< decltype(max_position) >::max() )
+{}
+
+HerkulexServo::HerkulexServo(const std::string& _name, const RegisterMapper& _mapper, unsigned int _hw_id, bool _reverse, int _offset, double _scale, int _min_position, int _max_position) :
+	register_mapper(_mapper),
+	name(_name),
+	hw_id(_hw_id),
+	reverse(_reverse),
+	offset(_offset),
+	scale(_scale),
+	min_position( _min_position ),
+	max_position( _max_position )
+{}
 
 void HerkulexServo::reqRead_ram(HerkulexPacket& req, const std::string& reg) const
 {
@@ -196,6 +210,10 @@ void HerkulexServo::reqIJOGheader(HerkulexPacket& req) const
 
 void HerkulexServo::insertIJOGdata(HerkulexPacket& req, JOGMode mode, unsigned int goal, unsigned int playtime) const
 {
+	// limit goal position
+	if (goal > max_position) goal = max_position;
+	if (goal < min_position) goal = min_position;
+	// form command frame
 	req.data.push_back(goal & 0xFF); // LSB goal
 	req.data.push_back((goal >> 8) & 0xFF); // LSB goal
 	req.data.push_back(mode & JOGMode::JOGMODE_MASK); // mode

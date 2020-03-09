@@ -16,9 +16,10 @@ namespace servo {
 			static const double TIME_CONV_COEFF_RAW2SEC;
 			static const std::vector<Register> registers_drs101;
 			static const RegisterMapper register_mapper_drs101;
-	
+
 		public:	
 			HerkulexServoDRS101(const std::string& _name, unsigned int _hw_id, bool _reverse = false, int _offset = POS_RAW_MAX/2, double _scale = 1.0);
+			HerkulexServoDRS101(const std::string& _name, unsigned int _hw_id, bool _reverse, int _offset, double _scale, int _min_position, int _max_position);
 
 			virtual double convertVelRawToRad(unsigned int raw) const;
 			virtual unsigned int convertVelRadToRaw(double vel) const;

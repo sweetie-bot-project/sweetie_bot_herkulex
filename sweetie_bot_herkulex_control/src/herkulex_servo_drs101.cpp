@@ -84,6 +84,13 @@ const RegisterMapper HerkulexServoDRS101::register_mapper_drs101 = RegisterMappe
 
 HerkulexServoDRS101::HerkulexServoDRS101(const std::string& _name, unsigned int _hw_id, bool _reverse, int _offset, double _scale) :
 	HerkulexServo(_name, register_mapper_drs101, _hw_id, _reverse, _offset, _scale)
+{
+	max_position = 1022;
+	min_position = 21;
+};
+
+HerkulexServoDRS101::HerkulexServoDRS101(const std::string& _name, unsigned int _hw_id, bool _reverse, int _offset, double _scale, int _min_position, int _max_position) :
+	HerkulexServo(_name, register_mapper_drs101, _hw_id, _reverse, _offset, _scale, _min_position, _max_position)
 {};
 
 double HerkulexServoDRS101::convertVoltageRawToVolts(unsigned int raw) const

@@ -149,6 +149,7 @@ namespace servo {
 			bool reverse;
 			int offset;
 			double scale;
+			int max_position, min_position; // limits for JOG command
 
 		public:
 			const RegisterMapper& register_mapper;
@@ -160,6 +161,7 @@ namespace servo {
 
 		public:
 			HerkulexServo(const std::string& _name, const RegisterMapper& mapper, unsigned int _hw_id, bool _reverse, int _offset, double _scale = 1.0);
+			HerkulexServo(const std::string& _name, const RegisterMapper& mapper, unsigned int _hw_id, bool _reverse, int _offset, double _scale, int _min_position, int _max_position);
 
 			// data fields access
 			const std::string& getName() const { return name; }
@@ -167,6 +169,7 @@ namespace servo {
 			bool isReverse() const { return reverse; }
 			bool getOffset() const { return offset; }
 			bool getScale() const { return scale; }
+			std::pair<int, int> getLimits() { std::make_pair(min_position, max_position); }
 
 			// Request packets generations.
 			void reqRead_ram(HerkulexPacket& req, const std::string& reg) const;
