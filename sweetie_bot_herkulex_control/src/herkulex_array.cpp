@@ -909,6 +909,7 @@ bool HerkulexArray::reqIJOG(HerkulexPacket& req, const ServoGoal& goal)
 			s->second->insertIJOGdata(req, servo::JOGMode::POSITION_CONTROL, s->second->convertPosRadToRaw(goal.target_pos[i]), s->second->convertTimeSecToRaw(goal.playtime[i]));
 		}
 	}
+	return true;
 }
 
 bool HerkulexArray::reqPosVel(HerkulexPacket& req, const std::string& servo)

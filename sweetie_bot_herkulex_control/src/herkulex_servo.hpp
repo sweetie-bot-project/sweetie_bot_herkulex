@@ -169,7 +169,7 @@ namespace servo {
 			bool isReverse() const { return reverse; }
 			bool getOffset() const { return offset; }
 			bool getScale() const { return scale; }
-			std::pair<int, int> getLimits() { std::make_pair(min_position, max_position); }
+			std::pair<int, int> getLimits() { return std::make_pair(min_position, max_position); }
 
 			// Request packets generations.
 			void reqRead_ram(HerkulexPacket& req, const std::string& reg) const;
