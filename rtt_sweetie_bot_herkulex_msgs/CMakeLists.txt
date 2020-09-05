@@ -3,7 +3,7 @@ project(rtt_sweetie_bot_herkulex_msgs)
 
 find_package(catkin REQUIRED COMPONENTS rtt_roscomm sweetie_bot_herkulex_msgs)
 include_directories(include)
-include_directories(SYSTEM ${catkin_INCLUDE_DIRS})
+include_directories(${catkin_INCLUDE_DIRS})
 
 ros_generate_rtt_typekit(sweetie_bot_herkulex_msgs)
 ros_generate_rtt_service_proxies(rtt_sweetie_bot_herkulex_msgs)
