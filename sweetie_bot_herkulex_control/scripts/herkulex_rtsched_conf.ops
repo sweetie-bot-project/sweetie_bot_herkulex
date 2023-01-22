@@ -1,0 +1,70 @@
+# DEPLOY BASIC HERKULEX_* SUBSYSTEM 
+
+import("rtt_ros");
+ros.import("rtt_rospack");
+ros.import("sweetie_bot_herkulex_control");
+
+# LOAD HERKULEX_* COMPONENTS
+
+loadComponent("herk_array","herkulex::HerkulexArray");
+loadService("herk_array", "marshalling");
+herk_array.marshalling.loadProperties(ros.find("sweetie_bot_herkulex_control") + "/scripts/cms01_array.cpf");
+
+loadComponent("herk_driver","herkulex::HerkulexDriver");
+herk_driver.port_name = "/dev/ttyUSB0";
+herk_driver.baudrate = 1000000;
+
+loadComponent("herk_sched","herkulex::HerkulexRTSched");
+
+# CONNECT OPERATIONS OF HERKULEX_* subsystem
+
+connectOperations("herk_array.sendPacketCM", "herk_sched.sendPacketCM");
+connectOperations("herk_sched.receivePacketCM", "herk_array.receivePacketCM");
+connectOperations("herk_sched.sendPacketDL", "herk_driver.sendPacket");
+connectOperations("herk_driver.receivePacket", "herk_sched.receivePacketDL");
+connectServices("herk_array","herk_sched");
+
+stream("herk_array.out_states", ros.comm.topic("/herkulex/servo_states"));
+stream("herk_array.commands", ros.comm.topic("/herkulex/servo_commands"));
+
+stream("herk_sched.out_joints", ros.comm.topic("/herkulex/joint_states"));
+stream("herk_sched.out_statistics", ros.comm.topic("/herkulex/statistics"));
+
+# Scheduler waits for completion of JOG command if those operations are connected.
+# connectOperations("herk_sched.waitSendPacketDL", "herk_driver.waitSendPacket");
+
+# TIME PERIODS CONFIGURATION
+
+herk_sched.period_RT = 0.006;
+herk_sched.period_CM = 0.003;
+
+# HerkulexArray timeout must be large then control cycle.
+herk_array.timeout = 0.05;
+herk_array.setPeriod(0.05);
+
+# Main discretization period (control cycle).
+# To prevent possible ACK packet clashes 
+# it must be larger then (period_RT + period_CM + timeout).
+var double TIMER_PERIOD = 0.01;
+
+# SETUP TIMER
+
+loadComponent("herk_timer", "OCL::TimerComponent");
+# timer_0 notifies herkulex_sched about begining of contril cycle.
+connect("herk_timer.timer_0", "herk_sched.sync", ConnPolicy());
+
+herk_timer.startTimer(0, TIMER_PERIOD); 
+# timer_1 notifies file reader. It has 50% period shift to prevent races.
+herk_timer.wait(1, TIMER_PERIOD/2);
+herk_timer.startTimer(1, TIMER_PERIOD); 
+
+# START HERKULEX_* SUBSYSTEM (without scheduler)
+
+herk_driver.configure;
+# Driver must be active when arraty is configurated.
+herk_driver.start;
+
+herk_sched.configure();
+herk_array.configure();
+# herk_array.start();
+
