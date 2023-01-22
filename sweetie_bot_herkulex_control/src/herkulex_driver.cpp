@@ -255,6 +255,7 @@ void HerkulexDriver::updateHook()
 						case HerkulexPacket::ACK_STAT:
 						case HerkulexPacket::ACK_ROLLBACK:
 						case HerkulexPacket::ACK_REBOOT:
+						case HerkulexPacket::ACK_RT_EXCHANGE:
 							recv_pkt.command = c;
 							recv_state = CHECKSUM1;
 							break;
