@@ -1,5 +1,5 @@
-#ifndef  SWEETIE_BOT_SERVO_SBS01_HPP
-#define  SWEETIE_BOT_SERVO_SBS01_HPP
+#ifndef  SWEETIE_BOT_SERVO_CMS01_HPP
+#define  SWEETIE_BOT_SERVO_CMS01_HPP
 
 #include "herkulex_servo.hpp"
 
@@ -7,7 +7,7 @@ namespace herkulex {
 
 namespace servo {
 
-	class SweetiBotServoSBS01 : public HerkulexServo
+	class SweetieBotServoCMS01 : public HerkulexServo
 	{
 		public:
 			static const unsigned int POS_RAW_MAX;
@@ -20,8 +20,8 @@ namespace servo {
 			static const RegisterMapper register_mapper;
 
 		public:	
-			SweetiBotServoSBS01(const std::string& _name, unsigned int _hw_id, bool _reverse = false, int _offset = POS_RAW_MAX/2, double _scale = 1.0);
-			SweetiBotServoSBS01(const std::string& _name, unsigned int _hw_id, bool _reverse, int _offset, double _scale, int _min_position, int _max_position);
+			SweetieBotServoCMS01(const std::string& _name, unsigned int _hw_id, bool _reverse = false, int _offset = POS_RAW_MAX/2, double _scale = 1.0);
+			SweetieBotServoCMS01(const std::string& _name, unsigned int _hw_id, bool _reverse, int _offset, double _scale, int _min_position, int _max_position);
 
 			virtual double convertPosRawToRad(unsigned int raw) const;
 			virtual unsigned int convertPosRadToRaw(double pos) const;
@@ -46,4 +46,4 @@ namespace servo {
 
 }
 
-#endif  /*SWEETIE_BOT_SERVO_SBS01_HPP*/
+#endif  /*SWEETIE_BOT_SERVO_CMS01_HPP*/

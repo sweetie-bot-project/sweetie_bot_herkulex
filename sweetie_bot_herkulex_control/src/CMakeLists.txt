@@ -11,7 +11,7 @@
 # and installs in the directory lib/orocos/herkulex_driver/
 #
 orocos_component(herkulex_driver herkulex_driver.hpp herkulex_driver.cpp) # ...you may add multiple source files
-orocos_component(herkulex_array herkulex_array.hpp herkulex_array.cpp herkulex_servo.hpp herkulex_servo.cpp herkulex_servo_drs101.hpp herkulex_servo_drs101.cpp sweetie_bot_servo_sbs01.cpp) # ...you may add multiple source files
+orocos_component(herkulex_array herkulex_array.hpp herkulex_array.cpp herkulex_servo.hpp herkulex_servo.cpp herkulex_servo_drs101.hpp herkulex_servo_drs101.cpp sweetie_bot_servo_cms01.cpp) # ...you may add multiple source files
 orocos_component(herkulex_sched herkulex_sched.hpp herkulex_sched.cpp) # ...you may add multiple source files
 #
 # You may add multiple orocos_component statements.

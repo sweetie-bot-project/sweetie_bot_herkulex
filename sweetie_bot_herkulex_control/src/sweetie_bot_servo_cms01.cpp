@@ -1,4 +1,4 @@
-#include "sweetie_bot_servo_sbs01.hpp"
+#include "sweetie_bot_servo_cms01.hpp"
 
 #include <cstdint>
 
@@ -7,19 +7,19 @@ namespace herkulex {
 namespace servo {
 
 
-const unsigned int  SweetiBotServoSBS01::POS_RAW_MAX = 4095;
+const unsigned int  SweetieBotServoCMS01::POS_RAW_MAX = 4095;
 
-const double SweetiBotServoSBS01::POS_CONV_COEFF_RAW2RAD = M_PI/180.0*320.0/4096.0;
+const double SweetieBotServoCMS01::POS_CONV_COEFF_RAW2RAD = M_PI/180.0*320.0/4096.0;
 
-const double SweetiBotServoSBS01::VEL_CONV_COEFF_RAW2RADS = POS_CONV_COEFF_RAW2RAD * 16000.0 / (1 << 14);
+const double SweetieBotServoCMS01::VEL_CONV_COEFF_RAW2RADS = POS_CONV_COEFF_RAW2RAD * 16000.0 / (1 << 14);
 
-const double SweetiBotServoSBS01::VOLTAGE_CONV_COEFF_RAW2VOLT = 0.0088623;
+const double SweetieBotServoCMS01::VOLTAGE_CONV_COEFF_RAW2VOLT = 0.0088623;
 
-const double SweetiBotServoSBS01::EFFORT_CONV_COEFF_RAW2HM = 0.00148 * (4.5 / 3.9);
+const double SweetieBotServoCMS01::EFFORT_CONV_COEFF_RAW2HM = 0.00148 * (4.5 / 3.9);
 
-const double SweetiBotServoSBS01::TIME_CONV_COEFF_RAW2SEC = 0.001;
+const double SweetieBotServoCMS01::TIME_CONV_COEFF_RAW2SEC = 0.001;
 
-const std::vector<Register> SweetiBotServoSBS01::registers =
+const std::vector<Register> SweetieBotServoCMS01::registers =
 {
 //num    name                        eep  ram bytes   rw      description
 {   0, "model_no_1",                       0,  -1,   1, false, "Hardware model (major)." },
@@ -76,70 +76,70 @@ const std::vector<Register> SweetiBotServoSBS01::registers =
 {  51, "max_slow_control_delay",          -1,  70,   1, false, "T2 control code execution duration, 1 mcs." },
 };
 
-const RegisterMapper SweetiBotServoSBS01::register_mapper = RegisterMapper(registers);
+const RegisterMapper SweetieBotServoCMS01::register_mapper = RegisterMapper(registers);
 
-SweetiBotServoSBS01::SweetiBotServoSBS01(const std::string& _name, unsigned int _hw_id, bool _reverse, int _offset, double _scale) :
+SweetieBotServoCMS01::SweetieBotServoCMS01(const std::string& _name, unsigned int _hw_id, bool _reverse, int _offset, double _scale) :
 	HerkulexServo(_name, register_mapper, _hw_id, _reverse, _offset, _scale)
 {
 	max_position = 3996;
 	min_position = 100;
 };
 
-SweetiBotServoSBS01::SweetiBotServoSBS01(const std::string& _name, unsigned int _hw_id, bool _reverse, int _offset, double _scale, int _min_position, int _max_position) :
+SweetieBotServoCMS01::SweetieBotServoCMS01(const std::string& _name, unsigned int _hw_id, bool _reverse, int _offset, double _scale, int _min_position, int _max_position) :
 	HerkulexServo(_name, register_mapper, _hw_id, _reverse, _offset, _scale, _min_position, _max_position)
 {};
 
-double SweetiBotServoSBS01::convertPosRawToRad(unsigned int raw) const 
+double SweetieBotServoCMS01::convertPosRawToRad(unsigned int raw) const 
 {
 	return scale*POS_CONV_COEFF_RAW2RAD * (static_cast<int16_t>(raw) - offset);
 };
 
-unsigned int SweetiBotServoSBS01::convertPosRadToRaw(double pos) const
+unsigned int SweetieBotServoCMS01::convertPosRadToRaw(double pos) const
 {
 	return pos / (scale*POS_CONV_COEFF_RAW2RAD) + offset;
 };
 
-double SweetiBotServoSBS01::convertVelRawToRad(unsigned int raw) const 
+double SweetieBotServoCMS01::convertVelRawToRad(unsigned int raw) const 
 {
 	return scale * VEL_CONV_COEFF_RAW2RADS * static_cast<int16_t>(raw);
 };
 
-unsigned int SweetiBotServoSBS01::convertVelRadToRaw(double vel) const
+unsigned int SweetieBotServoCMS01::convertVelRadToRaw(double vel) const
 {
 	return vel / (scale*VEL_CONV_COEFF_RAW2RADS);
 };
 
-double SweetiBotServoSBS01::convertEffortRawToHm(unsigned int raw) const 
+double SweetieBotServoCMS01::convertEffortRawToHm(unsigned int raw) const 
 {
 	return (EFFORT_CONV_COEFF_RAW2HM/scale) * static_cast<int16_t>(raw);
 };
 
-unsigned int SweetiBotServoSBS01::convertEffortHmToRaw(double effort) const
+unsigned int SweetieBotServoCMS01::convertEffortHmToRaw(double effort) const
 {
 	return effort * (scale/EFFORT_CONV_COEFF_RAW2HM);
 };
 
-double SweetiBotServoSBS01::convertTimeRawToSec(unsigned int raw) const 
+double SweetieBotServoCMS01::convertTimeRawToSec(unsigned int raw) const 
 {
 	return TIME_CONV_COEFF_RAW2SEC * raw;
 };
 
-unsigned int SweetiBotServoSBS01::convertTimeSecToRaw(double time) const
+unsigned int SweetieBotServoCMS01::convertTimeSecToRaw(double time) const
 {
 	return time / TIME_CONV_COEFF_RAW2SEC;
 };
 
-double SweetiBotServoSBS01::convertVoltageRawToVolts(unsigned int raw) const
+double SweetieBotServoCMS01::convertVoltageRawToVolts(unsigned int raw) const
 {
 	return raw * VOLTAGE_CONV_COEFF_RAW2VOLT;
 }
 
-double SweetiBotServoSBS01::convertTemperatureRawToCelsius(unsigned int raw) const
+double SweetieBotServoCMS01::convertTemperatureRawToCelsius(unsigned int raw) const
 {
 	return 0.0;
 }
 
-void SweetiBotServoSBS01::insertRT_EXCHANGEdataConvert(HerkulexPacket& req, double position, double velocity, double effort) const
+void SweetieBotServoCMS01::insertRT_EXCHANGEdataConvert(HerkulexPacket& req, double position, double velocity, double effort) const
 {
 	req.data.push_back(hw_id); // ID
 	req.data.push_back(0); // reserved
@@ -157,7 +157,7 @@ void SweetiBotServoSBS01::insertRT_EXCHANGEdataConvert(HerkulexPacket& req, doub
 	req.data.push_back((current_raw >> 8) & 0xFF);
 }
 
-bool SweetiBotServoSBS01::ackRT_EXCHANGE(const HerkulexPacket& ack, RTState& state) const
+bool SweetieBotServoCMS01::ackRT_EXCHANGE(const HerkulexPacket& ack, RTState& state) const
 {
 	if (ack.servo_id != hw_id) return false;
 	if (ack.command != HerkulexPacket::ACK_RT_EXCHANGE) return false;
@@ -171,7 +171,7 @@ bool SweetiBotServoSBS01::ackRT_EXCHANGE(const HerkulexPacket& ack, RTState& sta
 	return true;
 }
 
-void SweetiBotServoSBS01::reqPosVel(HerkulexPacket& req) const
+void SweetieBotServoCMS01::reqPosVel(HerkulexPacket& req) const
 {
 	req.command = HerkulexPacket::REQ_RAM_READ;
 	req.servo_id = hw_id;
@@ -180,7 +180,7 @@ void SweetiBotServoSBS01::reqPosVel(HerkulexPacket& req) const
 	req.data[1] = 4;
 }
 
-bool SweetiBotServoSBS01::ackPosVel(const HerkulexPacket& ack, double& pos, double& vel, Status& status) const 
+bool SweetieBotServoCMS01::ackPosVel(const HerkulexPacket& ack, double& pos, double& vel, Status& status) const 
 {
 	// read 54 and 55, at addr 58 
 	if (ack.servo_id != hw_id) return false;
@@ -194,7 +194,7 @@ bool SweetiBotServoSBS01::ackPosVel(const HerkulexPacket& ack, double& pos, doub
 	return true;
 }
 
-void SweetiBotServoSBS01::reqPosVelExtended(HerkulexPacket& req) const
+void SweetieBotServoCMS01::reqPosVelExtended(HerkulexPacket& req) const
 {
 	req.command = HerkulexPacket::REQ_RAM_READ;
 	req.servo_id = hw_id;
@@ -203,7 +203,7 @@ void SweetiBotServoSBS01::reqPosVelExtended(HerkulexPacket& req) const
 	req.data[1] = 18;
 }
 
-bool SweetiBotServoSBS01::ackPosVelExtended(const HerkulexPacket& ack, State& state, Status& status) const
+bool SweetieBotServoCMS01::ackPosVelExtended(const HerkulexPacket& ack, State& state, Status& status) const
 {
 	// read 54 throw 60 at addr 60
 	if (ack.servo_id != hw_id) return false;

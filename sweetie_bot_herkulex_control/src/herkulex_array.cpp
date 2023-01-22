@@ -12,7 +12,7 @@ extern "C" {
 
 #include "herkulex_servo.hpp"
 #include "herkulex_servo_drs101.hpp"
-#include "sweetie_bot_servo_sbs01.hpp"
+#include "sweetie_bot_servo_cms01.hpp"
 
 using namespace RTT;
 using namespace sweetie_bot;
@@ -21,7 +21,7 @@ using RTT::os::MutexLock;
 using RTT::base::PropertyBase;
 using herkulex::servo::HerkulexServo;
 using herkulex::servo::HerkulexServoDRS101;
-using herkulex::servo::SweetiBotServoSBS01;
+using herkulex::servo::SweetieBotServoCMS01;
 
 namespace herkulex
 {
@@ -341,8 +341,8 @@ bool HerkulexArray::configureHook()
 			if (servo_model  == "drs101" || servo_model == "drs201") {
 				servo = std::make_shared<HerkulexServoDRS101>(servo_name, servo_id, reverse, offset, scale);
 			}
-			else if (servo_model == "sb01") {
-				servo = std::make_shared<SweetiBotServoSBS01>(servo_name, servo_id, reverse, offset, scale);
+			else if (servo_model == "cms01") {
+				servo = std::make_shared<SweetieBotServoCMS01>(servo_name, servo_id, reverse, offset, scale);
 			}
 			else {
 				throw std::range_error("unknown servo model: " + servo_model);
