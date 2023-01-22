@@ -11,21 +11,20 @@ ros.import("sweetie_bot_herkulex_control");
 
 loadComponent("herk_array","herkulex::HerkulexArray");
 loadService("herk_array", "marshalling");
-herk_array.marshalling.loadProperties(ros.find("sweetie_bot_herkulex_control") + "/scripts/test_servo_array.cpf");
+herk_array.marshalling.loadProperties(ros.find("sweetie_bot_herkulex_control") + "/scripts/cms01_array.cpf");
 herk_array.timeout = 0.01; 
 
 loadComponent("herk_driver","herkulex::HerkulexDriver");
 herk_driver.port_name = "/dev/ttyUSB0";
-herk_driver.baudrate = 115200;
+#herk_driver.baudrate = 115200;
+herk_driver.baudrate = 1000000;
 
 # CONNECT OPERATIONS OF HERKULEX_* subsystem
 
 connectOperations("herk_array.sendPacketCM", "herk_driver.sendPacket");
 connectOperations("herk_driver.receivePacket", "herk_array.receivePacketCM");
-stream("herk_array.out_states", ros.comm.topic("/herkulex/servo_states"))
-stream("herk_array.commands", ros.comm.topic("/herkulex/servo_commands"))
-
-herk_array.detailed_state = true;
+stream("herk_array.out_states", ros.comm.topic("/herkulex/servo_states"));
+stream("herk_array.commands", ros.comm.topic("/herkulex/servo_commands"));
 
 # SETUP TIMER
 herk_array.setPeriod(0.056);

@@ -4,8 +4,10 @@ log4j.rootCategory=WARN
  
 # setup log level for RTT::Logger messages
 log4j.category.org.orocos.rtt=INFO
-log4j.additivity.org.orocos.rtt=false   # do not also log to parent categories
+log4j.additivity.org.orocos.rtt=true   # do not also log to parent categories
 
 # setup log level for different categories
 log4j.category.sweetie_bot.motion=INFO
-log4j.category.sweetie_bot.motion.herkulex=INFO
+log4j.category.sweetie_bot.motion.herk_array=INFO
+log4j.category.sweetie_bot.motion.herk_driver=INFO
+log4j.category.sweetie_bot.motion.herk_sched=INFO

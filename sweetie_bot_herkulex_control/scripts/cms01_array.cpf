@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE properties SYSTEM "cpf.dtd">
+<properties>
+  <struct name="groups" type="PropertyBag">
+    <description>Herkulex servo description.</description>
+	<struct name="default" type="PropertyBag">
+		<simple name="torque_mode_on" type="ulong">
+			<value>76</value>
+		</simple>
+		<simple name="torque_mode_brake" type="ulong">
+			<value>64</value>
+		</simple>
+		<struct name="registers_init" type="PropertyBag">
+			<description>These values are written to RAM register of ALL servos after reboot. The servo-specific values override them.</description>
+			<simple name="ack_policy" type="ulong">
+				<description>ACK packet send policy: 0x01 -- send READ ACK, 0x2 -- WRITE ACK, 0x04 ERROR ACK, 0x10 -- RT_EXCHANGE ACK.</description>
+				<value>23</value>
+			</simple>
+			<simple name="min_position" type="ulong">
+				<description>Minimal allowed absolute position.</description>
+				<value>96</value>
+			</simple>
+			<simple name="max_position" type="ulong">
+				<description>Maximal allowed absolute position.</description>
+				<value>3000</value>
+			</simple>
+			<simple name="rt_delay" type="ulong">
+				<description>Maximal allowed absolute position.</description>
+				<value>30</value>
+			</simple>
+			<simple name="position_kp" type="ulong">
+				<description>Proportional PID gain.</description>
+				<value>2000</value>
+			</simple>
+			<simple name="position_kd" type="ulong">
+				<description>Differential PID gain.</description>
+				<value>0</value>
+			</simple>
+			<simple name="position_ki" type="ulong">
+				<description>Integral PID gain.</description>
+				<value>0</value>
+			</simple>
+			<simple name="torque_control" type="ulong">
+				<value>76</value>
+			</simple>
+		</struct>
+	</struct>
+  </struct>
+  <struct name="servos" type="PropertyBag">
+    <description>Herkulex servo description.</description>
+	<struct name="servo1" type="PropertyBag">
+		<description>Test servo entry.</description>
+		<simple name="servo_id" type="ulong">
+			<description>Servo hardware ID.</description>
+			<value>1</value>
+		</simple>
+		<simple name="model" type="string">
+			<description>Servo model string.</description>
+			<value>cms01</value>
+		</simple>
+		<simple name="offset" type="ulong">
+			<description>Servo zero position offset (raw).</description>
+			<value>2048</value>
+		</simple>
+		<simple name="reverse" type="boolean">
+			<description>Reverse direction flag.</description>
+			<value>0</value>
+		</simple>
+	</struct>
+	<struct name="servo2" type="PropertyBag">
+		<description>Test servo entry.</description>
+		<simple name="servo_id" type="ulong">
+			<value>2</value>
+		</simple>
+		<simple name="model" type="string">
+			<value>cms01</value>
+		</simple>
+		<simple name="offset" type="ulong">
+			<value>2048</value>
+		</simple>
+		<simple name="reverse" type="boolean">
+			<value>0</value>
+		</simple>
+	</struct>
+  </struct>
+</properties>
