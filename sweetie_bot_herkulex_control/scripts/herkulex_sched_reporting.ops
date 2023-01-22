@@ -5,7 +5,7 @@ loadComponent("reporter_herk_stat", "OCL::FileReporting");
 reporter_herk_stat.WriteHeader = 0;
 reporter_herk_stat.ReportFile = "statistics.out";
 addPeer("reporter_herk_stat", "herk_sched");
-reporter_herk_stat.reportPort("herk_sched", "statistics");
+reporter_herk_stat.reportPort("herk_sched", "out_statistics");
 
 # servo detailed states
 loadComponent("reporter_herk_state", "OCL::FileReporting");

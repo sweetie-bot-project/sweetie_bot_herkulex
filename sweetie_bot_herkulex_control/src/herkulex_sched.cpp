@@ -62,7 +62,7 @@ HerkulexSched::HerkulexSched(std::string const& name) :
 	this->addPort("out_states", states_port)
 		.doc("State of servos from poll list. The level of verbosity depends on detailed_state property."); 
 #ifdef SCHED_STATISTICS
-	this->addPort("statistics", statistics_port)
+	this->addPort("out_statistics", statistics_port)
 		.doc("Real time exchange statistics."); 
 #endif
 

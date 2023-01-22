@@ -26,10 +26,13 @@ connectOperations("herk_sched.receivePacketCM", "herk_array.receivePacketCM");
 connectOperations("herk_sched.sendPacketDL", "herk_driver.sendPacket");
 connectOperations("herk_driver.receivePacket", "herk_sched.receivePacketDL");
 connectServices("herk_array","herk_sched");
-stream("herk_array.out_states", ros.comm.topic("/herkulex/servo_states"))
-stream("herk_array.commands", ros.comm.topic("/herkulex/servo_commands"))
 
-stream("herk_sched.out_states", ros.comm.topic("/herkulex/joint_states"))
+stream("herk_array.out_states", ros.comm.topic("/herkulex/servo_states"));
+stream("herk_array.commands", ros.comm.topic("/herkulex/servo_commands"));
+
+stream("herk_sched.out_joints", ros.comm.topic("/herkulex/joint_states"));
+stream("herk_sched.out_states", ros.comm.topic("/herkulex/herkulex_joint_states"));
+stream("herk_sched.out_statistics", ros.comm.topic("/herkulex/statistics"));
 
 # Scheduler waits for completion of JOG command if those operations are connected.
 # connectOperations("herk_sched.waitSendPacketDL", "herk_driver.waitSendPacket");
