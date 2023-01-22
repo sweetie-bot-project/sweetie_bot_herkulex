@@ -3,12 +3,14 @@
 extern "C" {
 #include <stdint.h>
 #include <unistd.h>
-#include <termios.h>
 #include <errno.h>
 #include <string.h>
+
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <linux/serial.h>
+
+#include <asm/termbits.h>
 #include <sys/ioctl.h>
 }
 
@@ -65,7 +67,7 @@ HerkulexDriver::HerkulexDriver(std::string const& name) :
 
 bool HerkulexDriver::configureHook()
 {
-	struct termios tty;
+	struct termios2 tty;
 
 	port_fd = open(this->port_name_prop.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK );
 	if (port_fd == -1) {
@@ -73,14 +75,14 @@ bool HerkulexDriver::configureHook()
 		return false;
 	}
 	// configure serial port
-	if (tcgetattr (this->port_fd, &tty) != 0) {
-		log(ERROR) << "tcgetattr() failed: " << strerror(errno) << endlog(); 
+	if (ioctl(port_fd, TCGETS2, &tty) != 0) {
+		log(ERROR) << "ioctl(TCGETS2) failed: " << strerror(errno) << endlog(); 
 		return false;
 	}
-	
+
 	// 8-bits, 1 STOP bit, enable receiver, ignore modem lines
 	//tty.c_cflag = CS8 | CREAD | CSTOPB | CLOCAL; 
-	tty.c_cflag = CS8 | CREAD | CLOCAL; 
+	tty.c_cflag = CS8 | CREAD | CLOCAL | BOTHER; 
 	// no signaling chars, no echo, no canonical processing
 	tty.c_lflag = 0;
 	// no special input processing
@@ -88,40 +90,14 @@ bool HerkulexDriver::configureHook()
 	// no special output processing
 	tty.c_oflag = 0;
 	// set speed
-	int ret;
-	switch (this->baudrate_prop) {
-		case 9600:
-			ret = cfsetspeed (&tty, B9600);
-			break;
-		case 19200:
-			ret = cfsetspeed (&tty, B19200);
-			break;
-		case 38400:
-			ret = cfsetspeed (&tty, B38400);
-			break;
-		case 57600:
-			ret = cfsetspeed (&tty, B57600);
-			break;
-		case 115200:
-			ret = cfsetspeed (&tty, B115200);
-			break;
-		case 230400:
-			ret = cfsetspeed (&tty, B230400);
-			break;
-		default:
-			log(ERROR) << "Incorrect baudrate property value: " << baudrate_prop << endlog(); 
-			return false;
-	}
-	if (ret) {
-		log(ERROR) << "cfsetspeed() failed: " << strerror(errno) << endlog(); 
-		return false;
-	}
+	tty.c_ispeed = this->baudrate_prop;
+	tty.c_ospeed = this->baudrate_prop;
 	// special properties
 	tty.c_cc[VMIN]  = 0;            // read doesn't block
 	tty.c_cc[VTIME] = 5;            // 0.5 seconds read timeout, so read will not block forever
 	// configure port
-	if (tcsetattr (this->port_fd, TCSANOW, &tty) != 0) {
-		log(ERROR) << "tcsetattr() failed: " << strerror(errno) << endlog(); 
+	if (ioctl(port_fd, TCSETS2, &tty) != 0) {
+		log(ERROR) << "ioctl(TCSETS2) failed: " << strerror(errno) << endlog(); 
 		return false;
 	}
 	// set low_latency flag
@@ -152,7 +128,7 @@ bool HerkulexDriver::configureHook()
 bool HerkulexDriver::startHook()
 {
 	// flush input buffer
-	int retval = tcflush(port_fd, TCIFLUSH);
+	int retval = ioctl(port_fd, TCFLSH, TCIFLUSH);
 	if (retval == -1) {
 		log(ERROR) << "tcflush() failed:" << strerror(errno) << endlog(); 
 		return false;
@@ -427,7 +403,7 @@ void HerkulexDriver::waitSendPacketDL()
 {
 	// Wait until all data is written to port.
 	// See comment in for sendPacketDL().
-	if (TEMP_FAILURE_RETRY(tcdrain(port_fd)) == -1) {
+	if (ioctl(port_fd, TCSBRK, 1) != 0) {
 		send_log(ERROR) << "tcdrain() failed: " << strerror(errno) << endlog();
 		this->exception();
 		return;
