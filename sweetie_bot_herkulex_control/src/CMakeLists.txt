@@ -14,6 +14,7 @@ orocos_component(herkulex_driver herkulex_driver.hpp herkulex_driver.cpp) # ...y
 orocos_component(herkulex_array herkulex_array.hpp herkulex_array.cpp herkulex_servo.hpp herkulex_servo.cpp herkulex_servo_drs101.hpp herkulex_servo_drs101.cpp sweetie_bot_servo_cms01.cpp) # ...you may add multiple source files
 orocos_component(herkulex_sched herkulex_sched.hpp herkulex_sched.cpp) # ...you may add multiple source files
 orocos_component(herkulex_rtsched herkulex_rtsched.hpp herkulex_rtsched.cpp) # ...you may add multiple source files
+orocos_component(herkulex_signal_generator signal_generator.hpp signal_generator.cpp) # ...you may add multiple source files
 #
 # You may add multiple orocos_component statements.
 
