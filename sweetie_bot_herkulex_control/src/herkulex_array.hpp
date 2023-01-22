@@ -32,7 +32,7 @@ class HerkulexArray : public RTT::TaskContext
 		typedef sweetie_bot_herkulex_msgs::HerkulexState HerkulexState;
 		typedef sweetie_bot_herkulex_msgs::ServoCommands ServoCommands;
 		typedef sweetie_bot_herkulex_msgs::ServoGoal ServoGoal;
-
+		typedef sensor_msgs::JointState JointState;
 
 	protected:
 		class TimeoutTimer : public RTT::os::Timer 
@@ -55,30 +55,36 @@ class HerkulexArray : public RTT::TaskContext
 		static const unsigned int JOG_POSITION;
 		static const unsigned int JOG_SPEED;
 
+		struct RegisterInitStruct {
+			RTT::Property<RTT::PropertyBag> group_register_init;
+			RTT::Property<RTT::PropertyBag> register_init;
+			unsigned int torque_mode_on, torque_mode_brake;
+		};
+
 	protected:
+		const TimeoutTimer::TimerId TIMEOUT_TIMER_ID = 0;
 		// logger
 #ifdef SWEETIEBOT_LOGGER
 		sweetie_bot::logger::SWEETIEBOT_LOGGER log;
 #else
 		sweetie_bot::logger::LoggerRTT log;
 #endif
-		// cached servo configuration
-		servo::HerkulexServoArray servos; /**< Servo sructures */
-		servo::HerkulexServoArray::const_iterator monitor_iter;
-		std::map< std::string, std::shared_ptr<herkulex::servo::RegisterValues> > servos_init; /**< Registers initializeted on startup. */
-		std::shared_ptr<herkulex::servo::HerkulexServo> broadcast; /**< Fictive servo with broadcast ID. */
-		std::shared_ptr<herkulex::servo::RegisterValues> broadcast_init; /**< Global servo configuration. */
+		// servos maps
+		servo::MapNameToHerkulexServo servo_name_map; 
+		servo::MapHwIdToHerkulexServo servo_id_map; 
+		// register values
+		std::map<std::string, RegisterInitStruct> servos_init;
 		// port buffer
-		sensor_msgs::JointState joints;
+		sensor_msgs::JointState joints; // TODO: Deprecate
 		// packet buffers
 		HerkulexPacket req_pkt;
 		RTT::base::BufferLockFree< HerkulexPacket > ack_buffer; /**< Buffer for received ACK packets. */ 
 		RTT::os::Mutex ack_mutex;
 		RTT::os::Condition ack_cond;
 		TimeoutTimer timeout_timer;
-		HerkulexState state;
 		ServoCommands commands;
-		const TimeoutTimer::TimerId TIMEOUT_TIMER_ID = 0;
+		// monitoring
+		servo::MapHwIdToHerkulexServo::iterator monitor_iter;
 		// internals
 		bool break_loop_flag;
 
@@ -86,11 +92,11 @@ class HerkulexArray : public RTT::TaskContext
 	protected:
 		// PROPERTIES
 		RTT::PropertyBag servos_prop;
+		RTT::PropertyBag groups_prop;
 		unsigned int tryouts_prop;
 		double timeout_prop;
 		bool mass_reset_prop;
 		double reset_delay_prop;
-		bool detailed_state;
 
 	protected:
 		// PORTS
@@ -137,6 +143,8 @@ class HerkulexArray : public RTT::TaskContext
 
 		// OPERATIONS: PROVIDED (protocol interface)
 		bool reqIJOG(HerkulexPacket& req, const ServoGoal& goal);
+		bool reqRT_EXCHANGE(HerkulexPacket& req, const JointState& cmd);
+		bool ackRT_EXCHANGE(const HerkulexPacket& req, JointState& state, double& temperature, servo::Status& status);
 		bool reqPosVel(HerkulexPacket& req, const std::string& servo);
 		bool ackPosVel(const HerkulexPacket& ack, const std::string& servo, double& pos, double& vel, servo::Status& status);
 		bool reqPosVelExtended(HerkulexPacket& req, const std::string& servo);
@@ -150,12 +158,11 @@ class HerkulexArray : public RTT::TaskContext
 		bool sendRequest(const HerkulexPacket&, servo::HerkulexServo::AckCallback);
 		bool sendRequest(const HerkulexPacket&, servo::HerkulexServo::AckCallback, unsigned char tryouts);
 		// Helper fuctions
-		std::string statusToString(servo::Status status) ;
-		bool setServoRegisters(const servo::HerkulexServo * s, const servo::RegisterValues * reg_init);
-		bool setTorqueFree_impl(const servo::HerkulexServo * s, bool torque_free);
+		bool setServoRegisters(const servo::HerkulexServo& s, const RTT::PropertyBag& regs_init);
+		bool setTorqueFree_impl(const servo::HerkulexServo& s, bool torque_free);
 		// servos access
 		const servo::HerkulexServo& getServo(const std::string& name); 
-		bool addServo(std::shared_ptr<servo::HerkulexServo> servo);
+		const servo::HerkulexServo& getServo(int id);
 
 	public:
 		HerkulexArray(std::string const& name);
