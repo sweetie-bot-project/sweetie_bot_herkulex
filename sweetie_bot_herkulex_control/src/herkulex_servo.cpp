@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <limits>
 
+
 namespace herkulex {
 
 namespace servo {
@@ -19,13 +20,53 @@ RegisterMapper::RegisterMapper(const std::vector<Register>& _regs) :
 	};
 }
 
+std::string Status::toString() const
+{
+	std::stringstream status_str;
+
+	if (detail & STATUS_D_MOTOR_ON || error & STATUS_E_MOTOR_ON) status_str << "ON ";
+	else status_str << "OFF ";
+	if (detail & STATUS_D_MOVING) status_str << "moving ";
+	if (detail & STATUS_D_INPOSITION) status_str << "inpos ";
+	if (error & STATUS_E_ERROR_MASK) {
+		status_str << "ERR ( ";
+		if (error & STATUS_E_OVER_VOLTAGE) status_str << "voltage ";
+		if (error & STATUS_E_POT_LIMIT) status_str << "pot_limit ";
+		if (error & STATUS_E_TEMPERATURE) status_str << "temperature ";
+		if (error & STATUS_E_OVERLOAD) status_str << "overload ";
+		if (error & STATUS_E_DRIVER_FAULT) status_str << "driver_fault ";
+		if (error & STATUS_E_EEP_REGS) status_str << "eep_regs ";
+		status_str << ") ";
+	}
+	else {
+		status_str << "OK ";
+	}
+	if (error & STATUS_E_INVALID_PACKET) {
+		status_str << "INVALID_PACKET ( ";
+		if (detail & STATUS_D_INVALID_CHECKSUM) status_str << "checksum ";
+		if (detail & STATUS_D_UNKNOWN_CMD) status_str << "cmd ";
+		if (detail & STATUS_D_INVALID_REG_RANGE) status_str << "reg_range ";
+		if (detail & STATUS_D_FRAME_ERROR) status_str << "frame_err ";
+		status_str << ") ";
+	}
+	else if (detail & STATUS_D_PROTOCOL_ERROR_MASK) {
+		status_str << "PROTOCOL_ERROR ( ";
+		if (detail & STATUS_D_RECV_OVERFLOW) status_str << "recv_overflow ";
+		if (detail & STATUS_D_INVALID_REQ) status_str << "invalid_req ";
+		if (detail & STATUS_D_INVALID_REG_RANGE) status_str << "reg_range ";
+		if (detail & STATUS_D_OP_ERROR) status_str << "op_err ";
+		status_str << ") ";
+	}
+	return status_str.str();
+}
+
 HerkulexServo::HerkulexServo(const std::string& _name, const RegisterMapper& _mapper, unsigned int _hw_id, bool _reverse, int _offset, double _scale) :
 	register_mapper(_mapper),
 	name(_name),
 	hw_id(_hw_id),
 	reverse(_reverse),
 	offset(_offset),
-	scale(_scale),
+	scale(_reverse ? - _scale : _scale),
 	min_position( std::numeric_limits< decltype(min_position) >::min() ),
 	max_position( std::numeric_limits< decltype(max_position) >::max() )
 {}
@@ -36,7 +77,7 @@ HerkulexServo::HerkulexServo(const std::string& _name, const RegisterMapper& _ma
 	hw_id(_hw_id),
 	reverse(_reverse),
 	offset(_offset),
-	scale(_scale),
+	scale(_reverse ? - _scale : _scale),
 	min_position( _min_position ),
 	max_position( _max_position )
 {}
@@ -131,6 +172,13 @@ void HerkulexServo::reqReset(HerkulexPacket& req) const
 	req.data.resize(0);
 }
 
+void HerkulexServo::reqResetBroadcast(HerkulexPacket& req)
+{
+	req.command = HerkulexPacket::REQ_REBOOT;
+	req.servo_id = BROADCAST_ID;
+	req.data.resize(0);
+}
+
 void HerkulexServo::reqWriteClearStatus(HerkulexPacket& req) const
 {
 	req.command = HerkulexPacket::REQ_RAM_WRITE;
@@ -201,9 +249,9 @@ bool HerkulexServo::ackStatReturn_impl(const HerkulexPacket& ack, Status& status
 	return true;
 }
 
-void HerkulexServo::reqIJOGheader(HerkulexPacket& req) const
+void HerkulexServo::reqIJOGheader(HerkulexPacket& req)
 {
-	req.servo_id = hw_id;
+	req.servo_id = BROADCAST_ID;
 	req.command = HerkulexPacket::REQ_I_JOG;
 	req.data.resize(0);
 }
@@ -221,9 +269,24 @@ void HerkulexServo::insertIJOGdata(HerkulexPacket& req, JOGMode mode, unsigned i
 	req.data.push_back(playtime); //playtime
 }
 
-void HerkulexServo::reqSJOGheader(HerkulexPacket& req, unsigned int playtime) const
+void HerkulexServo::insertIJOGdataConvert(HerkulexPacket& req, JOGMode mode, double goal, double playtime) const
 {
-	req.servo_id = hw_id;
+	switch (mode){
+		case JOGMode::POSITION_CONTROL:
+			insertIJOGdata(req, mode, convertPosRadToRaw(goal), convertTimeSecToRaw(playtime));
+			break;
+		case JOGMode::SPEED_CONTROL:
+			insertIJOGdata(req, mode, convertVelRadToRaw(goal), convertTimeSecToRaw(playtime));
+			break;
+		deafult:
+			insertIJOGdata(req, JOGMode::STOP, 0, 0);
+			break;
+	}
+}
+
+void HerkulexServo::reqSJOGheader(HerkulexPacket& req, unsigned int playtime)
+{
+	req.servo_id = BROADCAST_ID;
 	req.command = HerkulexPacket::REQ_S_JOG;
 	req.data.resize(1);
 	req.data[0] = playtime;
@@ -235,6 +298,62 @@ void HerkulexServo::insertSJOGdata(HerkulexPacket& req, JOGMode mode, unsigned i
 	req.data.push_back((goal >> 8) & 0xFF); // LSB goal
 	req.data.push_back(mode); // mode
 	req.data.push_back(hw_id); // ID
+}
+
+void HerkulexServo::insertSJOGdataConvert(HerkulexPacket& req, JOGMode mode, double goal) const
+{
+	switch (mode){
+		case JOGMode::POSITION_CONTROL:
+			insertSJOGdata(req, mode, convertPosRadToRaw(goal));
+			break;
+		case JOGMode::SPEED_CONTROL:
+			insertSJOGdata(req, mode, convertVelRadToRaw(goal));
+			break;
+		deafult:
+			insertSJOGdata(req, JOGMode::STOP, 0);
+			break;
+	}
+}
+
+void HerkulexServo::reqRT_EXCHANGEheader(HerkulexPacket& req)
+{
+	req.servo_id = BROADCAST_ID;
+	req.command = HerkulexPacket::REQ_RT_EXCHANGE;
+	req.data.resize(0);
+}
+
+void HerkulexServo::insertRT_EXCHANGEdata(HerkulexPacket& req, int position, int velocity, int current) const
+{
+	// limit goal position
+	if (position > max_position) position = max_position;
+	if (position < min_position) position = min_position;
+	// form command frame
+	req.data.push_back(hw_id); // ID
+	req.data.push_back(0); // reserved
+	req.data.push_back(position & 0xFF);  
+	req.data.push_back((position >> 8) & 0xFF); 
+	req.data.push_back(velocity & 0xFF); // LSB goal
+	req.data.push_back((velocity >> 8) & 0xFF); // LSB goal
+	req.data.push_back(current & 0xFF); // LSB goal
+	req.data.push_back((current >> 8) & 0xFF); // LSB goal
+}
+
+void HerkulexServo::insertRT_EXCHANGEdataConvert(HerkulexPacket& req, double position, double velocity, double effort) const
+{
+	insertRT_EXCHANGEdata(req, convertPosRadToRaw(position), convertVelRadToRaw(velocity), convertEffortHmToRaw(effort));
+}
+
+bool HerkulexServo::ackRT_EXCHANGE(const HerkulexPacket& ack, RTState& state) const
+{
+	if (ack.servo_id != hw_id) return false;
+	if (ack.command != HerkulexPacket::ACK_RT_EXCHANGE) return false;
+	if (ack.data.size() != 8) return false;
+	state.position = convertPosRawToRad(ack.data[0] + (static_cast<int>(ack.data[1]) << 8));
+	state.velocity = convertVelRawToRad(ack.data[2] + (static_cast<int>(ack.data[3]) << 8));
+	state.effort = convertVelRawToRad(ack.data[4] + (static_cast<int>(ack.data[5]) << 8));
+	state.temperature = convertTemperatureRawToCelsius(ack.data[6]);
+	state.status_error = ack.data[7];
+	return true;
 }
 
 } // namespace servo

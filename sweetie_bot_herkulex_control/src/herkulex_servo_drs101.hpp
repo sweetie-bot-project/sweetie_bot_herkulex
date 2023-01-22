@@ -13,7 +13,9 @@ namespace servo {
 			static const unsigned int POS_RAW_MAX;
 			static const double POS_CONV_COEFF_RAW2RAD;
 			static const double VEL_CONV_COEFF_RAW2RADS;
+			static const double EFFORT_CONV_COEFF_RAW2HM;
 			static const double TIME_CONV_COEFF_RAW2SEC;
+			static const double VOLTAGE_CONV_COEFF_RAW2VOLT;
 			static const std::vector<Register> registers_drs101;
 			static const RegisterMapper register_mapper_drs101;
 
@@ -21,17 +23,19 @@ namespace servo {
 			HerkulexServoDRS101(const std::string& _name, unsigned int _hw_id, bool _reverse = false, int _offset = POS_RAW_MAX/2, double _scale = 1.0);
 			HerkulexServoDRS101(const std::string& _name, unsigned int _hw_id, bool _reverse, int _offset, double _scale, int _min_position, int _max_position);
 
-			virtual double convertVelRawToRad(unsigned int raw) const;
-			virtual unsigned int convertVelRadToRaw(double vel) const;
 			virtual double convertPosRawToRad(unsigned int raw) const;
 			virtual unsigned int convertPosRadToRaw(double pos) const;
+			virtual double convertVelRawToRad(unsigned int raw) const;
+			virtual unsigned int convertVelRadToRaw(double vel) const;
+			virtual double convertEffortRawToHm(unsigned int raw) const;
+			virtual unsigned int convertEffortHmToRaw(double effort) const;
 			virtual double convertTimeRawToSec(unsigned int raw) const;
 			virtual unsigned int convertTimeSecToRaw(double pos) const;
 			virtual double convertVoltageRawToVolts(unsigned int raw) const;
 			virtual double convertTemperatureRawToCelsius(unsigned int raw) const;
 
-			virtual void reqStatusExtended(HerkulexPacket& req) const;
-			virtual bool ackStatusExtended(const HerkulexPacket& ack, unsigned char& torque_control, unsigned char& led_control, double& voltage, double& temperature, Status& status) const;
+			virtual void insertSJOGdataConvert(HerkulexPacket& req, JOGMode mode, double goal) const;
+			virtual void insertIJOGdataConvert(HerkulexPacket& req, JOGMode mode, double goal, double playtime) const;
 
 			virtual void reqPosVel(HerkulexPacket& req) const;
 			virtual bool ackPosVel(const HerkulexPacket& ack, double& pos, double& vel, Status& status) const;

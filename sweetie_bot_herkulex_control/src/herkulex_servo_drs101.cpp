@@ -5,7 +5,6 @@ namespace herkulex {
 
 namespace servo {
 
-
 const unsigned int  HerkulexServoDRS101::POS_RAW_MAX = 1023;
 
 const double HerkulexServoDRS101::POS_CONV_COEFF_RAW2RAD = 0.325*M_PI/180.0;
@@ -13,6 +12,10 @@ const double HerkulexServoDRS101::POS_CONV_COEFF_RAW2RAD = 0.325*M_PI/180.0;
 const double HerkulexServoDRS101::VEL_CONV_COEFF_RAW2RADS = 29.09*M_PI/180.0;
 
 const double HerkulexServoDRS101::TIME_CONV_COEFF_RAW2SEC = 0.0112;
+
+const double HerkulexServoDRS101::EFFORT_CONV_COEFF_RAW2HM = 2.40 / 1024;
+
+const double HerkulexServoDRS101::VOLTAGE_CONV_COEFF_RAW2VOLT = 0.074;
 
 const std::vector<Register> HerkulexServoDRS101::registers_drs101 =
 {
@@ -93,10 +96,49 @@ HerkulexServoDRS101::HerkulexServoDRS101(const std::string& _name, unsigned int 
 	HerkulexServo(_name, register_mapper_drs101, _hw_id, _reverse, _offset, _scale, _min_position, _max_position)
 {};
 
+double HerkulexServoDRS101::convertPosRawToRad(unsigned int raw) const 
+{
+	return scale*POS_CONV_COEFF_RAW2RAD * ((int16_t) raw - offset);
+}
+
+unsigned int HerkulexServoDRS101::convertPosRadToRaw(double pos) const
+{
+	return pos / (scale*POS_CONV_COEFF_RAW2RAD) + offset;
+}
+
+double HerkulexServoDRS101::convertVelRawToRad(unsigned int raw) const 
+{
+	return scale*VEL_CONV_COEFF_RAW2RADS * ((int16_t) raw);
+}
+
+unsigned int HerkulexServoDRS101::convertVelRadToRaw(double vel) const
+{
+	return vel / (scale*VEL_CONV_COEFF_RAW2RADS);
+}
+
+double HerkulexServoDRS101::convertEffortRawToHm(unsigned int raw) const 
+{
+	return (EFFORT_CONV_COEFF_RAW2HM/scale) * static_cast<int16_t>(raw);
+}
+
+unsigned int HerkulexServoDRS101::convertEffortHmToRaw(double effort) const
+{
+	return effort * (scale/EFFORT_CONV_COEFF_RAW2HM);
+}
+
+double HerkulexServoDRS101::convertTimeRawToSec(unsigned int raw) const 
+{
+	return TIME_CONV_COEFF_RAW2SEC * raw;
+}
+
+unsigned int HerkulexServoDRS101::convertTimeSecToRaw(double time) const
+{
+	return time / TIME_CONV_COEFF_RAW2SEC;
+}
+
 double HerkulexServoDRS101::convertVoltageRawToVolts(unsigned int raw) const
 {
-	const double voltage_conversion_coefficient = 0.074075;
-	return raw * voltage_conversion_coefficient;
+	return raw * VOLTAGE_CONV_COEFF_RAW2VOLT;
 }
 
 double HerkulexServoDRS101::convertTemperatureRawToCelsius(unsigned int raw) const
@@ -118,63 +160,56 @@ double HerkulexServoDRS101::convertTemperatureRawToCelsius(unsigned int raw) con
 	return temperature_conversion_table[raw] / 100.0;
 }
 
-double HerkulexServoDRS101::convertVelRawToRad(unsigned int raw) const 
+void HerkulexServoDRS101::insertIJOGdataConvert(HerkulexPacket& req, JOGMode mode, double goal, double playtime) const
 {
-	double vel = scale*VEL_CONV_COEFF_RAW2RADS * (int16_t) raw;
-	return reverse ? -vel : vel;
-};
-
-unsigned int HerkulexServoDRS101::convertVelRadToRaw(double vel) const
-{
-	vel = reverse ? -vel : vel;
-	return vel / (scale*VEL_CONV_COEFF_RAW2RADS);
-};
-
-double HerkulexServoDRS101::convertPosRawToRad(unsigned int raw) const 
-{
-	double pos = scale*POS_CONV_COEFF_RAW2RAD * ((int) raw - offset);
-	return reverse ? -pos : pos;
-};
-
-unsigned int HerkulexServoDRS101::convertPosRadToRaw(double pos) const
-{
-	pos = reverse ? -pos : pos;
-	return pos / (scale*POS_CONV_COEFF_RAW2RAD) + offset;
-};
-
-double HerkulexServoDRS101::convertTimeRawToSec(unsigned int raw) const 
-{
-	return TIME_CONV_COEFF_RAW2SEC * raw;
-};
-
-unsigned int HerkulexServoDRS101::convertTimeSecToRaw(double time) const
-{
-	return time / TIME_CONV_COEFF_RAW2SEC;
-};
-
-void HerkulexServoDRS101::reqStatusExtended(HerkulexPacket& req) const
-{
-	req.command = HerkulexPacket::REQ_RAM_READ;
-	req.servo_id = hw_id;
-	req.data.resize(2);
-	req.data[0] = 52; // RAW addr of Voltage
-	req.data[1] = 4;
+	int goal_raw;
+	switch (mode) {
+		case JOGMode::POSITION_CONTROL:
+			goal_raw = goal / (scale*POS_CONV_COEFF_RAW2RAD) + offset;
+			break;
+		case JOGMode::SPEED_CONTROL:
+			goal_raw = goal / (scale*VEL_CONV_COEFF_RAW2RADS);
+			break;
+		default:
+			goal_raw = 0;
+			mode = JOGMode::STOP;
+			break;
+	}
+	unsigned int playtime_raw = playtime / TIME_CONV_COEFF_RAW2SEC;
+	// limit goal position
+	if (goal_raw > max_position) goal_raw = max_position;
+	if (goal_raw < min_position) goal_raw = min_position;
+	// form command frame
+	req.data.push_back(goal_raw & 0xFF); // LSB goal
+	req.data.push_back((goal_raw >> 8) & 0xFF); // LSB goal
+	req.data.push_back(mode); // mode
+	req.data.push_back(hw_id); // ID
+	req.data.push_back(playtime_raw); //playtime
 }
 
-bool HerkulexServoDRS101::ackStatusExtended(const HerkulexPacket& ack, unsigned char& torque_control, unsigned char& led_control, double& voltage, double& temperature, Status& status) const
+void HerkulexServoDRS101::insertSJOGdataConvert(HerkulexPacket& req, JOGMode mode, double goal) const
 {
-	// read 47 throw 50
-	if (ack.servo_id != hw_id) return false;
-	if (ack.command != HerkulexPacket::ACK_RAM_READ) return false;
-	if (ack.data.size() != 8) return false;
-	if (ack.data[0] != 52 || ack.data[1] != 4) return false;
-	unsigned int data[4];
-	if (!ackRead_impl(ack, 47, data, status)) return false;
-	torque_control = u_char(data[0]);
-	led_control = u_char(data[1]);
-	voltage = convertVoltageRawToVolts(data[2]);
-	temperature = convertTemperatureRawToCelsius(data[3]);
-	return true;
+	int goal_raw;
+	switch (mode) {
+		case JOGMode::POSITION_CONTROL:
+			goal_raw = goal / (scale*POS_CONV_COEFF_RAW2RAD) + offset;
+			break;
+		case JOGMode::SPEED_CONTROL:
+			goal_raw = goal / (scale*VEL_CONV_COEFF_RAW2RADS);
+			break;
+		default:
+			goal_raw = 0;
+			mode = JOGMode::STOP;
+			break;
+	}
+	// limit goal position
+	if (goal_raw > max_position) goal_raw = max_position;
+	if (goal_raw < min_position) goal_raw = min_position;
+	// form command frame
+	req.data.push_back(goal_raw & 0xFF); // LSB goal
+	req.data.push_back((goal_raw >> 8) & 0xFF); // LSB goal
+	req.data.push_back(mode); // mode
+	req.data.push_back(hw_id); // ID
 }
 
 void HerkulexServoDRS101::reqPosVel(HerkulexPacket& req) const
@@ -195,8 +230,8 @@ bool HerkulexServoDRS101::ackPosVel(const HerkulexPacket& ack, double& pos, doub
 	if (ack.data[0] != 60 || ack.data[1] != 4) return false;
 	unsigned int data[2];
 	if (!ackRead_impl(ack, 54, data, status)) return false;
-	pos = convertPosRawToRad(data[0]);
-	vel = convertVelRawToRad(data[1]);
+	pos = scale*POS_CONV_COEFF_RAW2RAD * ((int16_t) data[0] - offset);
+	vel = scale*VEL_CONV_COEFF_RAW2RADS * ((int16_t) data[1]);;
 	return true;
 }
 
@@ -218,12 +253,12 @@ bool HerkulexServoDRS101::ackPosVelExtended(const HerkulexPacket& ack, State& st
 	if (ack.data[0] != 60 || ack.data[1] != 14) return false;
 	unsigned int data[7];
 	if (!ackRead_impl(ack, 54, data, status)) return false;
-	state.pos = convertPosRawToRad(data[0]);
-	state.vel = convertVelRawToRad(data[1]);
+	state.pos = scale*POS_CONV_COEFF_RAW2RAD * ((int16_t) data[0] - offset);
+	state.vel = scale*VEL_CONV_COEFF_RAW2RADS * ((int16_t) data[1]);
 	state.pwm = float(int16_t(data[2])) / 1023.0f;
-	state.pos_goal = convertPosRawToRad(data[4]);;
-	state.pos_desired = convertPosRawToRad(data[5]);;
-	state.vel_desired = convertVelRawToRad(data[6]);
+	state.pos_goal = scale*POS_CONV_COEFF_RAW2RAD * ((int16_t) data[4] - offset);
+	state.pos_desired = scale*POS_CONV_COEFF_RAW2RAD * ((int16_t) data[5] - offset);
+	state.vel_desired = scale*VEL_CONV_COEFF_RAW2RADS * ((int16_t) data[6]);;
 	return true;
 }
 
