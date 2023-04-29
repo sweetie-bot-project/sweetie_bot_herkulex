@@ -25,6 +25,7 @@ runScript(HERKULEX_SCRIPTS + "herkulex_rtsched_conf.ops");
 # SETUP SIGNAL GENERATOR
 
 loadComponent("gen","herkulex::SignalGenerator");
+var double TIMER_PERIOD = 0.01;
 gen.setPeriod(TIMER_PERIOD);
 # siganl parameters
 gen.joint_names = strings("servo1", "servo2");
