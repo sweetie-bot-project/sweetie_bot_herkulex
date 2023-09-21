@@ -5,7 +5,7 @@
 #include <vector>
 #include <unordered_map>
 
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/function.hpp>
 
 #include <sweetie_bot_herkulex_msgs/typekit/HerkulexPacket.h>
@@ -249,32 +249,32 @@ namespace servo {
 			// Acknowlege packets parse callbacks. Callback can be stored in AckCallback variable and passed to function to perform
 			// multiple parse packets attemts.
 			AckCallback ackCallbackRead_ram(const std::string& reg, unsigned int& val, Status& status) const {
-				return boost::bind(&HerkulexServo::ackRead_ram, this, _1, boost::cref(reg), boost::ref(val), boost::ref(status));
+				return boost::bind(&HerkulexServo::ackRead_ram, this, boost::placeholders::_1, boost::cref(reg), boost::ref(val), boost::ref(status));
 			}
 			AckCallback ackCallbackRead_eep(const std::string& reg, unsigned int& val, Status& status) const {
-				return boost::bind(&HerkulexServo::ackRead_eep, this, _1, boost::cref(reg), boost::ref(val), boost::ref(status));
+				return boost::bind(&HerkulexServo::ackRead_eep, this, boost::placeholders::_1, boost::cref(reg), boost::ref(val), boost::ref(status));
 			}
 			AckCallback ackCallbackWrite_ram(Status& status) const {
-				return boost::bind(&HerkulexServo::ackWrite_ram, this, _1, boost::ref(status));
+				return boost::bind(&HerkulexServo::ackWrite_ram, this, boost::placeholders::_1, boost::ref(status));
 			}
 			AckCallback ackCallbackWrite_eep(Status& status) const {
-				return boost::bind(&HerkulexServo::ackWrite_eep, this, _1, boost::ref(status));
+				return boost::bind(&HerkulexServo::ackWrite_eep, this, boost::placeholders::_1, boost::ref(status));
 			}
 			AckCallback ackCallbackWriteClearStatus(Status& status) const {
-				return boost::bind(&HerkulexServo::ackWriteClearStatus, this, _1, boost::ref(status));
+				return boost::bind(&HerkulexServo::ackWriteClearStatus, this, boost::placeholders::_1, boost::ref(status));
 			}
 			AckCallback ackCallbackStat(Status& status) const {
-				return boost::bind(&HerkulexServo::ackStat, this, _1, boost::ref(status));
+				return boost::bind(&HerkulexServo::ackStat, this, boost::placeholders::_1, boost::ref(status));
 			}
 			AckCallback ackCallbackRollback(Status& status) const {
-				return boost::bind(&HerkulexServo::ackRollback, this, _1, boost::ref(status));
+				return boost::bind(&HerkulexServo::ackRollback, this, boost::placeholders::_1, boost::ref(status));
 			}
 			AckCallback ackCallbackReset(Status& status) const {
-				return boost::bind(&HerkulexServo::ackReset, this, _1, boost::ref(status));
+				return boost::bind(&HerkulexServo::ackReset, this, boost::placeholders::_1, boost::ref(status));
 			}
 
 			AckCallback ackCallbackRT_EXCHANGE(RTState& state) const {
-				return boost::bind(&HerkulexServo::ackRT_EXCHANGE, this, _1, boost::ref(state));
+				return boost::bind(&HerkulexServo::ackRT_EXCHANGE, this, boost::placeholders::_1, boost::ref(state));
 			}
 
 			virtual double convertPosRawToRad(unsigned int raw) const = 0;
@@ -291,13 +291,13 @@ namespace servo {
 			virtual void reqPosVel(HerkulexPacket& req) const = 0;
 			virtual bool ackPosVel(const HerkulexPacket& ack, double& pos, double& vel, Status& status) const = 0;
 			AckCallback ackCallbackPosVel(double& pos, double& vel, Status& status) const {
-				return boost::bind(&HerkulexServo::ackPosVel, this, _1, boost::ref(pos), boost::ref(vel), boost::ref(status));
+				return boost::bind(&HerkulexServo::ackPosVel, this, boost::placeholders::_1, boost::ref(pos), boost::ref(vel), boost::ref(status));
 			}
 
 			virtual void reqPosVelExtended(HerkulexPacket& req) const = 0;
 			virtual bool ackPosVelExtended(const HerkulexPacket& ack, State& state, Status& status) const = 0;
 			AckCallback ackCallbackackPosVelExtended(State& state, Status& status) const {
-				return boost::bind(&HerkulexServo::ackPosVelExtended, this, _1, boost::ref(state), boost::ref(status));
+				return boost::bind(&HerkulexServo::ackPosVelExtended, this, boost::placeholders::_1, boost::ref(state), boost::ref(status));
 			}
 	};
 

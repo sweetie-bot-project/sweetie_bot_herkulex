@@ -2,6 +2,7 @@
 #define OROCOS_HERKULEX_DRIVER_COMPONENT_HPP
 
 #include <string>
+#include <array>
 
 #include <rtt/RTT.hpp>
 #include <rtt/os/Timer.hpp>
