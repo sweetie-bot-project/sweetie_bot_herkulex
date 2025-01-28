@@ -11,7 +11,7 @@ ros.import("sweetie_bot_herkulex_control");
 
 loadComponent("herk_array","herkulex::HerkulexArray");
 loadService("herk_array", "marshalling");
-herk_array.marshalling.loadProperties(ros.find("sweetie_bot_herkulex_control") + "/scripts/cms01_array.cpf");
+herk_array.marshalling.loadProperties(ros.find("sweetie_bot_herkulex_control") + "/scripts/cms01_default.cpf");
 herk_array.timeout = 0.01; 
 
 loadComponent("herk_driver","herkulex::HerkulexDriver");

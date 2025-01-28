@@ -8,13 +8,14 @@ ros.import("sweetie_bot_herkulex_control");
 
 loadComponent("herk_array","herkulex::HerkulexArray");
 loadService("herk_array", "marshalling");
-herk_array.marshalling.loadProperties(ros.find("sweetie_bot_herkulex_control") + "/scripts/cms01_array.cpf");
+herk_array.marshalling.loadProperties(ros.find("sweetie_bot_herkulex_control") + "/scripts/cms01_default.cpf");
 
 loadComponent("herk_driver","herkulex::HerkulexDriver");
 herk_driver.port_name = "/dev/ttyUSB0";
 herk_driver.baudrate = 1000000;
 
 loadComponent("herk_sched","herkulex::HerkulexRTSched");
+herk_sched.poll_list = strings("servo1")
 
 # CONNECT OPERATIONS OF HERKULEX_* subsystem
 
@@ -35,8 +36,9 @@ stream("herk_sched.out_statistics", ros.comm.topic("/herkulex/statistics"));
 
 # TIME PERIODS CONFIGURATION
 
-herk_sched.period_RT = 0.006;
-herk_sched.period_CM = 0.003;
+herk_sched.period_RT = 0.005;
+herk_sched.period_CM = 0.001;
+herk_sched.timeout = 0.003;
 
 # HerkulexArray timeout must be large then control cycle.
 herk_array.timeout = 0.05;
@@ -60,9 +62,9 @@ herk_timer.startTimer(1, TIMER_PERIOD);
 
 # START HERKULEX_* SUBSYSTEM (without scheduler)
 
-herk_driver.configure;
+herk_driver.configure();
 # Driver must be active when arraty is configurated.
-herk_driver.start;
+herk_driver.start();
 
 herk_sched.configure();
 herk_array.configure();
