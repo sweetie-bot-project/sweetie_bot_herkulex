@@ -34,8 +34,8 @@ namespace servo {
 			virtual double convertVoltageRawToVolts(unsigned int raw) const;
 			virtual double convertTemperatureRawToCelsius(unsigned int raw) const;
 
-			virtual void insertRT_EXCHANGEdataConvert(HerkulexPacket& req, double position, double velocity, double current) const;
-			virtual bool ackRT_EXCHANGE(const HerkulexPacket& ack, RTState& state) const;
+			virtual void insertRT_WRITEdataConvert(HerkulexPacket& req, RT_WRITEMode mode, double position, double velocity, double current) const;
+			virtual bool ackRT_READ(const HerkulexPacket& ack, RTState& state) const;
 
 			virtual void reqPosVel(HerkulexPacket& req) const;
 			virtual bool ackPosVel(const HerkulexPacket& ack, double& pos, double& vel, Status& status) const;

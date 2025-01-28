@@ -24,38 +24,50 @@ std::string Status::toString() const
 {
 	std::stringstream status_str;
 
-	if (detail & STATUS_D_MOTOR_ON || error & STATUS_E_MOTOR_ON) status_str << "ON ";
-	else status_str << "OFF ";
+	if (detail & STATUS_D_VERSION_BIT) {
+		if (error & STATUS_E_CONTROL_ON) status_str << "ON ";
+		else status_str << "OFF ";
+		if (detail & STATUS_D_MOTOR_ON) status_str << "motor_on ";
+		else status_str << "motor_off ";
+	}
+	else {
+		if (detail & STATUS_D_MOTOR_ON) status_str << "ON ";
+		else status_str << "OFF ";
+	}
 	if (detail & STATUS_D_MOVING) status_str << "moving ";
-	if (detail & STATUS_D_INPOSITION) status_str << "inpos ";
+	if (detail & STATUS_D_INPOS) status_str << "inpos ";
 	if (error & STATUS_E_ERROR_MASK) {
 		status_str << "ERR ( ";
-		if (error & STATUS_E_OVER_VOLTAGE) status_str << "voltage ";
+		if (error & STATUS_E_VOLTAGE) status_str << "voltage ";
 		if (error & STATUS_E_POT_LIMIT) status_str << "pot_limit ";
 		if (error & STATUS_E_TEMPERATURE) status_str << "temperature ";
 		if (error & STATUS_E_OVERLOAD) status_str << "overload ";
 		if (error & STATUS_E_DRIVER_FAULT) status_str << "driver_fault ";
-		if (error & STATUS_E_EEP_REGS) status_str << "eep_regs ";
+		if (error & STATUS_E_EEP_ERROR) status_str << "ep_regs ";
 		status_str << ") ";
 	}
 	else {
 		status_str << "OK ";
 	}
-	if (error & STATUS_E_INVALID_PACKET) {
-		status_str << "INVALID_PACKET ( ";
-		if (detail & STATUS_D_INVALID_CHECKSUM) status_str << "checksum ";
-		if (detail & STATUS_D_UNKNOWN_CMD) status_str << "cmd ";
-		if (detail & STATUS_D_INVALID_REG_RANGE) status_str << "reg_range ";
-		if (detail & STATUS_D_FRAME_ERROR) status_str << "frame_err ";
-		status_str << ") ";
+	if (detail & STATUS_D_VERSION_BIT) {
+		if (detail & STATUS_D_PROTOCOL_ERROR_MASK) {
+			status_str << "PROTOCOL_ERROR ( ";
+			if (detail & STATUS_D_RECV_OVERFLOW) status_str << "recv_overflow ";
+			if (detail & STATUS_D_INVALID_REQ) status_str << "invalid_req ";
+			if (detail & STATUS_D_BAD_REG_RANGE) status_str << "reg_range ";
+			if (detail & STATUS_D_PROT_OP_ERROR) status_str << "op_err ";
+			status_str << ") ";
+		}
 	}
-	else if (detail & STATUS_D_PROTOCOL_ERROR_MASK) {
-		status_str << "PROTOCOL_ERROR ( ";
-		if (detail & STATUS_D_RECV_OVERFLOW) status_str << "recv_overflow ";
-		if (detail & STATUS_D_INVALID_REQ) status_str << "invalid_req ";
-		if (detail & STATUS_D_INVALID_REG_RANGE) status_str << "reg_range ";
-		if (detail & STATUS_D_OP_ERROR) status_str << "op_err ";
-		status_str << ") ";
+	else {
+		if (error & STATUS_E_INVALID_PACKET) {
+			status_str << "INVALID_PACKET ( ";
+			if (detail & STATUS_D_INVALID_CHECKSUM) status_str << "checksum ";
+			if (detail & STATUS_D_UNKNOWN_CMD) status_str << "cmd ";
+			if (detail & STATUS_D_BAD_REG_RANGE) status_str << "reg_range ";
+			if (detail & STATUS_D_FRAME_ERROR) status_str << "frame_err ";
+			status_str << ") ";
+		}
 	}
 	return status_str.str();
 }
@@ -315,38 +327,45 @@ void HerkulexServo::insertSJOGdataConvert(HerkulexPacket& req, JOGMode mode, dou
 	}
 }
 
-void HerkulexServo::reqRT_EXCHANGEheader(HerkulexPacket& req)
+void HerkulexServo::reqRT_WRITEheader(HerkulexPacket& req)
 {
 	req.servo_id = BROADCAST_ID;
-	req.command = HerkulexPacket::REQ_RT_EXCHANGE;
+	req.command = HerkulexPacket::REQ_RT_WRITE;
 	req.data.resize(0);
 }
 
-void HerkulexServo::insertRT_EXCHANGEdata(HerkulexPacket& req, int position, int velocity, int current) const
+void HerkulexServo::insertRT_WRITEdata(HerkulexPacket& req, RT_WRITEMode mode, int position, int velocity, int current) const
 {
 	// limit goal position
 	if (position > max_position) position = max_position;
 	if (position < min_position) position = min_position;
 	// form command frame
 	req.data.push_back(hw_id); // ID
-	req.data.push_back(0); // reserved
+	req.data.push_back(mode);  // control mode
 	req.data.push_back(position & 0xFF);  
 	req.data.push_back((position >> 8) & 0xFF); 
-	req.data.push_back(velocity & 0xFF); // LSB goal
-	req.data.push_back((velocity >> 8) & 0xFF); // LSB goal
-	req.data.push_back(current & 0xFF); // LSB goal
-	req.data.push_back((current >> 8) & 0xFF); // LSB goal
+	req.data.push_back(velocity & 0xFF); 
+	req.data.push_back((velocity >> 8) & 0xFF); 
+	req.data.push_back(current & 0xFF); 
+	req.data.push_back((current >> 8) & 0xFF); 
 }
 
-void HerkulexServo::insertRT_EXCHANGEdataConvert(HerkulexPacket& req, double position, double velocity, double effort) const
+void HerkulexServo::insertRT_WRITEdataConvert(HerkulexPacket& req, RT_WRITEMode mode, double position, double velocity, double effort) const
 {
-	insertRT_EXCHANGEdata(req, convertPosRadToRaw(position), convertVelRadToRaw(velocity), convertEffortHmToRaw(effort));
+	insertRT_WRITEdata(req, mode, convertPosRadToRaw(position), convertVelRadToRaw(velocity), convertEffortHmToRaw(effort));
 }
 
-bool HerkulexServo::ackRT_EXCHANGE(const HerkulexPacket& ack, RTState& state) const
+void HerkulexServo::reqRT_READheader(HerkulexPacket& req)
+{
+	req.servo_id = BROADCAST_ID;
+	req.command = HerkulexPacket::REQ_RT_READ;
+	req.data.resize(0);
+}
+
+bool HerkulexServo::ackRT_READ(const HerkulexPacket& ack, RTState& state) const
 {
 	if (ack.servo_id != hw_id) return false;
-	if (ack.command != HerkulexPacket::ACK_RT_EXCHANGE) return false;
+	if (ack.command != HerkulexPacket::ACK_RT_READ) return false;
 	if (ack.data.size() != 8) return false;
 	state.position = convertPosRawToRad(ack.data[0] + (static_cast<int>(ack.data[1]) << 8));
 	state.velocity = convertVelRawToRad(ack.data[2] + (static_cast<int>(ack.data[3]) << 8));

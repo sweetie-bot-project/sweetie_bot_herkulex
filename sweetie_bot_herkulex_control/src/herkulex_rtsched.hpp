@@ -84,6 +84,7 @@ class HerkulexRTSched : public RTT::TaskContext
 		double period_RT;
 		double period_CM;
 		double req_timeout;
+		std::vector<std::string> poll_list;
 
 	protected:
 		// helper funcions
@@ -104,8 +105,9 @@ class HerkulexRTSched : public RTT::TaskContext
 		// Operations: required
 		RTT::OperationCaller<void(const HerkulexPacket& pkt)> receivePacketCM;
 		// OPERATIONS: PROTOCOL
-		RTT::OperationCaller<bool (HerkulexPacket& req, const JointState& cmd)> reqRT_EXCHANGE;
-		RTT::OperationCaller<bool (const HerkulexPacket& ack, JointState& state, double& temperature, servo::Status& status)> ackRT_EXCHANGE;
+		RTT::OperationCaller<bool (HerkulexPacket& req, const JointState& cmd)> reqRT_WRITE;
+		RTT::OperationCaller<bool (HerkulexPacket& req, const std::vector<std::string>& servos)> reqRT_READ;
+		RTT::OperationCaller<bool (const HerkulexPacket& ack, JointState& state, double& temperature, servo::Status& status)> ackRT_READ;
 
 	public:
 		HerkulexRTSched(std::string const& name);

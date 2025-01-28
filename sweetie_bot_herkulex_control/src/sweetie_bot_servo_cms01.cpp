@@ -22,59 +22,71 @@ const double SweetieBotServoCMS01::TIME_CONV_COEFF_RAW2SEC = 0.001;
 const std::vector<Register> SweetieBotServoCMS01::registers =
 {
 //num    name                        eep  ram bytes   rw      description
-{   0, "model_no_1",                       0,  -1,   1, false, "Hardware model (major)." },
-{   1, "model_no_2",                       1,  -1,   1, false, "Hardware model (minor)." },
-{   2, "version1",                         2,  -1,   1, false, "Firmware version (major)." },
-{   3, "version2",                         3,  -1,   1, false, "Firmware version (minor)." },
-{   4, "baudrate",                         4,  -1,   1,  true, "Baudrate: 0x1 (57600), 0x2 (115200), 0x3 (1000000), 0x4 (2000000)." },
-{   5, "id",                               5,  -1,   1,  true, "Servo ID." },
-{   6, "ack_policy",                       6,   0,   1,  true, "ACK packet send policy: 0x01 -- send READ ACK, 0x2 -- WRITE ACK, 0x04 ERROR ACK, 0x10 -- RT_EXCHANGE ACK." },
-{   7, "torque_policy",                    7,   1,   1,  true, "If (r{torque_policy} & r{status_error} & 0x7F) set r{torque_mode} to 0x00 or 0x40 (depending on (r{torque_policy} & 0x80)" },
-{   8, "max_temperature",                  8,   2,   1,  true, "Overhead detection threshold (16 ADC units)." },
-{   9, "min_voltage",                      9,   3,   1,  true, "Undervoltage detection threshold (16 ADC units)." },
-{  10, "max_voltage",                     10,   4,   1,  true, "Overvoltage detection threshold (16 ADC units)." },
-{  11, "avg_current_alpha",               11,   5,   1,  true, "Average current filter coefficient (u0.16) on T2 period." },
-{  12, "max_avg_current",                 12,   6,   2,  true, "Average overcurrent detection threshold (ADC units)." },
-{  13, "max_current",                     14,   8,   2,  true, "Peak overcurrent detection threshold (ADC units)." },
-{  14, "current_limit",                   16,  10,   2,  true, "Maximal allowed reference current (saturation limit) (ADC units)." },
-{  15, "pwm_limit",                       18,  12,   2,  true, "Maximal allowed PWM." },
-{  16, "min_position",                    20,  14,   2,  true, "Movement limit absolute position. Check is performed after applying position offset." },
-{  17, "max_position",                    22,  16,   2,  true, "Movement limit absolute position. Check is performed after applying position offset." },
-{  18, "position_offset",                 24,  18,   2,  true, "Position offset, ADC units (u16)" },
-{  19, "inpos_threshold",                 26,  20,   1,  true, "If position error less then threshold INPOS flag is set." },
-{  20, "moving_threshold",                27,  21,   1,  true, "If speed is greater then threshold MOVING falg is set." },
-{  21, "resistance",                      28,  22,   2,  true, "Resistance value (current controller feedforwad term), voltage ADC units/current ADC units (u4.12)" },
-{  22, "speed_filter_alpha",              30,  24,   2,  true, "Speed Kalman filter parameter (alpha coeffeicent of alpha-beta filter), (u0.18)" },
-{  23, "speed_filter_beta",               32,  26,   2,  true, "Speed Kalman filter parameter (beta coeffeicent of alpha-beta filter) (u0.20)" },
-{  24, "current_kp",                      34,  28,   2,  true, "Current controller proportional gain, current to voltage (u4.12)" },
-{  25, "current_ki",                      36,  30,   2,  true, "Current controller integral gain, current to voltage on T1 period (u4.12)." },
-{  26, "position_kp",                     38,  32,   2,  true, "Position controller proportional gain, position to current (u8.8)." },
-{  27, "position_ki",                     40,  34,   2,  true, "Position controller integral gain, position to current on T2 period (u4.12)." },
-{  28, "position_kd",                     42,  36,   2,  true, "Position controller differential gain, speed to current (u18)." },
-{  29, "position_Iff0",                   44,  38,   2,  true, "Speed sign feedforward to current, current ADC units (u16)." },
-{  30, "position_kff1",                   46,  40,   2,  true, "Speed feedforward, speed to current (u18)" },
-{  31, "rt_start_delay",                  48,  42,   1,  true, "Delay between RT_EXCHANGE request and first ACK packet, 10 mcs" },
-{  32, "rt_delay",                        49,  43,   1,  true, "Delay between RT_EXCHANGE ACK packets, 10 mcs" },
-{  33, "rt_playtime",                     50,  44,   1,  true, "RT_EXCHANGE position exptrapolation duration, 1 mcs" },
-{  34, "ack_timeout",                     51,  45,   1,  true, "Maximal allowed ACK delay for all requests except `RT_DEBUG` и `RT_EXCHANGE`." },
-{  35, "torque_control",                  -1,  46,   1,  true, "Control mode." },
-{  36, "playtime",                        -1,  47,   1,  true, "How long servo attempts to preserve reference speed, T2 period." },
-{  37, "position_ref",                    -1,  48,   2,  true, "Reference position, ADC units (s15)." },
-{  38, "speed_ref",                       -1,  50,   2,  true, "Reference speed, position ADC unit per T1, (s1.14)." },
-{  39, "current_ff",                      -1,  52,   2,  true, "Current feedforward term, reference current or PWM." },
-{  40, "position",                        -1,  54,   2, false, "Actual position, ADC units (s15)." },
-{  41, "speed",                           -1,  56,   2, false, "Estimated speed, position ADC unit per T1 (s1.14)." },
-{  42, "current",                         -1,  58,   2, false, "Estimated current, 0.00148 А (s15)." },
-{  43, "pwm_voltage",                     -1,  60,   2, false, "PWM equavalent voltage, 0.0088623 V (s15)." },
-{  44, "temperature",                     -1,  62,   1, false, "Temperature readings." },
-{  45, "reserved3",                       -1,  63,   1, false, "Reserved" },
-{  46, "voltage",                         -1,  64,   2, false, "DC source voltage, 0.0088623 V, u16" },
-{  47, "status_error",                    -1,  66,   1, false, "Servo hardware status, see below." },
-{  48, "status_detail",                   -1,  67,   1, false, "Servo status, see below." },
-{  49, "min_rt_start_delay",              -1,  68,   1, false, "Estimated rt_start_delay value (RT_EXCHANGE request porcessing duration in 10 mcs)." },
-{  50, "max_fast_control_delay",          -1,  69,   1, false, "T1 control code execution duration, 1 mcs." },
-{  51, "max_slow_control_delay",          -1,  70,   1, false, "T2 control code execution duration, 1 mcs." },
+{   0, "model_no_1",                    0,  -1,   1,  false, "Hardware model (major)." },
+{   1, "model_no_2",                    1,  -1,   1,  false, "Hardware model (minor)." },
+{   2, "version1",                      2,  -1,   1,  false, "Firmware version (major)." },
+{   3, "version2",                      3,  -1,   1,  false, "Firmware version (minor)." },
+{   4, "baudrate",                      4,  -1,   1,   true, "Baudrate: 0x1 (57600), 0x2 (115200), 0x7 (921600), 0x8 (1000000). See manual for full mode list." },
+{   5, "id",                            6,   0,   1,   true, "Servo ID." },
+{   6, "ack_policy",                    7,   1,   1,   true, "ACK packet send policy. Flags: { READ_ACK (0x01), WRITE_ACK (0x02), ERROR ACK: (0x04) }" },
+{   7, "torque_policy",                 8,   2,   1,   true, "If (r{torque_policy} & r{status_error} & 0x7F) set r{torque_control} to FREE or BRAKE if (r{torque_policy} & 0x80)." },
+{   8, "operation_mode",                9,   3,   1,   true, "Control loop configuration. Flags: { CURRENT_CONTROLER_ON (0x01) }" },
+{   9, "max_temperature",              10,   4,   1,   true, "Overhead detection threshold." },
+{  10, "min_voltage",                  11,   5,   1,   true, "Undervoltage detection threshold." },
+{  11, "max_voltage",                  12,   6,   1,   true, "Overvoltage detection threshold." },
+{  12, "avg_current_alpha",            13,   7,   1,   true, "Current filter coefficient on T2 period (u.16)." },
+{  13, "pwm_deadzone",                 14,   8,   1,   true, "If PWM filling factor is lower than this value apply zero PWM." },
+{  14, "max_avg_current",              16,  10,   2,   true, "Average overcurrent detection threshold." },
+{  15, "max_current",                  18,  12,   2,   true, "Peak overcurrent detection threshold." },
+{  16, "current_limit",                20,  14,   2,   true, "Maximal allowed reference current (saturation limit)." },
+{  17, "min_position",                 22,  16,   2,   true, "Movement limit absolute position. Check is performed after applying position offset." },
+{  18, "max_position",                 24,  18,   2,   true, "Movement limit absolute position. Check is performed after applying position offset." },
+{  19, "inpos_threshold",              26,  20,   1,   true, "If position error less then threshold INPOS flag is set." },
+{  20, "moving_threshold",             27,  21,   1,   true, "If speed is greater then threshold MOVING falg is set." },
+{  21, "resistance",                   28,  22,   2,   true, "Resistance. This is used to calculate voltage from current reference if current controller is disabled." },
+{  22, "inv_back_emf_coeff",           30,  24,   2,   true, "Inversed backEMF coefficient, deg/(sV)." },
+{  23, "position_filter_alpha",        32,  26,   2,   true, "Position exponential filter coeffeicent on T1 (u.18)" },
+{  24, "speed_filter_alpha",           34,  28,   2,   true, "Speed exponential filter coeffeicent on T1 (u.18)" },
+{  25, "current_offset",               36,  30,   2,   true, "Current measurements zero shift. Automatically updated in FREE mode." },
+{  26, "current_kp",                   38,  32,   2,   true, "Current controller proportional gain, current to voltage (s3.12)." },
+{  27, "current_ki",                   40,  34,   2,   true, "Current controller integral gain, current to voltage on T1 period (s3.12). T1 = T2/16." },
+{  28, "current_alpha",                42,  36,   2,   true, "Current controller integral drain (s3.12). If it is nonzero controller compensates backEMF only partially." },
+{  29, "position_offset",              44,  38,   2,   true, "Position offset, ADC units (s15)" },
+{  30, "position_kp",                  46,  40,   2,   true, "Position controller proportional gain, position to current (u8.8)." },
+{  31, "position_ki",                  48,  42,   2,   true, "Position controller np.integral gain, position to current on T2 period (u4.12)." },
+{  32, "position_kd",                  50,  44,   2,   true, "Position controller differential gain, speed to current (u.18)." },
+{  33, "position_Iff0",                52,  46,   2,   true, "Speed sign feedforward to current, current ADC units (s15)." },
+{  34, "position_kff1",                54,  48,   2,   true, "Speed feedforward, speed to current (s.18)" },
+{  35, "position_kff2",                56,  50,   2,   true, "Accel feedforward, accel to current (s.32)" },
+{  36, "profile_speed",                58,  52,   2,   true, "Maximal speed in accel-speed based speed profile mode." },
+{  37, "profile_accel",                60,  54,   2,   true, "Maximal acceleration in accel-speed based speed profile mode." },
+{  38, "profile_time_ratio",           62,  56,   1,   true, "Raio beteween duration of acceleration (decelearion) stage and constant-speed stage in time-based profile mode (u.8)." },
+{  39, "rt_start_delay",               63,  57,   1,   true, "Delay between RT_READ request and first ACK packet, 10 mcs" },
+{  40, "rt_delay",                     64,  58,   1,   true, "Delay between RT_READ ACK packets, 10 mcs" },
+{  41, "ack_timeout",                  65,  59,   1,   true, "Maximal allowed ACK packet delay for all requests except `RT_DEBUG` и `RT_EXCHANGE`, 100 mcs." },
+{  42, "rt_playtime",                  66,  60,   1,   true, "Position exptrapolation duration after receiving RT_WRITE command, T2 periods." },
+{  43, "torque_control",               -1,  61,   1,   true, "Control mode override: FREE (0x00), BRAKE (0x40), NORMAL (Ox60)" },
+{  44, "status_error",                 -1,  62,   1,   true, "Servo hardware status." },
+{  45, "status_detail",                -1,  63,   1,   true, "Servo status." },
+{  46, "position_target",              -1,  64,   2,  false, "Target postion for last PROFILE command (modified by RT_WRITE command)" },
+{  47, "playtime",                     -1,  66,   2,  false, "Motion duration for PROFILE_TIME or watchdog time for SPEED, POSITION and CURRENT mode, T2 periods." },
+{  48, "position_ref",                 -1,  68,   2,  false, "Reference position set by RT_WRITE (POSITION)  or by trajectory generator (PROFILE, SPEED)." },
+{  49, "speed_ref",                    -1,  70,   2,  false, "Reference speed set by RT_WRITE (POSITION, SPEED mode)  or by trajectory generator (PROFILE), position/T1 (s1.14)." },
+{  50, "current_ff",                   -1,  72,   2,  false, "Current feedforward modifer set by  RT_WRITE command (POSITION, SPEED, CURRENT)  or by trajectory generator (PROFILE)." },
+{  51, "current_ref",                  -1,  74,   2,  false, "Reference current for current regulator." },
+{  52, "position_raw",                 -1,  76,   2,  false, "Measured position (u14.2)." },
+{  53, "position",                     -1,  78,   2,  false, "Filtered position (s15)." },
+{  54, "speed",                        -1,  80,   2,  false, "Estimated speed, position unit per T1 (s1.14)." },
+{  55, "current",                      -1,  82,   2,  false, "Actual current." },
+{  56, "voltage",                      -1,  84,   2,  false, "DC source voltage." },
+{  57, "voltage_pwm",                  -1,  86,   2,  false, "Effective voltage applied to the motor." },
+{  58, "temperature",                  -1,  88,   1,  false, "Temperature readings." },
+{  59, "control_mode",                 -1,  89,   1,  false, "Current control mode. This value is set by RT_WRITE cmd." },
+{  60, "min_rt_start_delay",           -1,  90,   1,  false, "Minimal value of  r{rt_start_delay} value (RT_* request porcessing duration), 10 mcs)." },
+{  61, "max_fast_control_delay",       -1,  91,   1,  false, "T1 level control code execution duration, 1 mcs." },
+{  62, "max_slow_control_delay",       -1,  92,   1,  false, "T2 level control code execution duration, 1 mcs." },
 };
+
 
 const RegisterMapper SweetieBotServoCMS01::register_mapper = RegisterMapper(registers);
 
@@ -139,10 +151,10 @@ double SweetieBotServoCMS01::convertTemperatureRawToCelsius(unsigned int raw) co
 	return 0.0;
 }
 
-void SweetieBotServoCMS01::insertRT_EXCHANGEdataConvert(HerkulexPacket& req, double position, double velocity, double effort) const
+void SweetieBotServoCMS01::insertRT_WRITEdataConvert(HerkulexPacket& req, RT_WRITEMode mode,  double position, double velocity, double effort) const
 {
 	req.data.push_back(hw_id); // ID
-	req.data.push_back(0); // reserved
+	req.data.push_back(static_cast<uint8_t>(mode)); // mode
 	// convert to raw
 	int position_raw = position / (scale*POS_CONV_COEFF_RAW2RAD) + offset;
 	int velocity_raw = velocity / (scale*VEL_CONV_COEFF_RAW2RADS);
@@ -157,10 +169,10 @@ void SweetieBotServoCMS01::insertRT_EXCHANGEdataConvert(HerkulexPacket& req, dou
 	req.data.push_back((current_raw >> 8) & 0xFF);
 }
 
-bool SweetieBotServoCMS01::ackRT_EXCHANGE(const HerkulexPacket& ack, RTState& state) const
+bool SweetieBotServoCMS01::ackRT_READ(const HerkulexPacket& ack, RTState& state) const
 {
 	if (ack.servo_id != hw_id) return false;
-	if (ack.command != HerkulexPacket::ACK_RT_EXCHANGE) return false;
+	if (ack.command != HerkulexPacket::ACK_RT_READ) return false;
 	if (ack.data.size() != 8) return false;
 	const int16_t * data_as_int16 = (const int16_t *) ack.data.data();
 	state.position = (scale*POS_CONV_COEFF_RAW2RAD) * (data_as_int16[0] - offset);

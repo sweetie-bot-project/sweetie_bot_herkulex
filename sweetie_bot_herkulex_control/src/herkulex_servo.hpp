@@ -102,31 +102,33 @@ namespace servo {
 
 		enum detail_drs_flag {
 			STATUS_D_MOVING = 0x01,
-			STATUS_D_INPOSITION = 0x02,
+			STATUS_D_INPOS = 0x02,
 			STATUS_D_INVALID_CHECKSUM = 0x04,
 			STATUS_D_UNKNOWN_CMD = 0x08,
-			STATUS_D_INVALID_REG_RANGE = 0x10,
+			STATUS_D_BAD_REG_RANGE = 0x10,
 			STATUS_D_FRAME_ERROR = 0x20,
 		};
 		enum detail_sb_flag {
 			STATUS_D_RECV_OVERFLOW = 0x04,
 			STATUS_D_INVALID_REQ = 0x08,
-			STATUS_D_OP_ERROR = 0x20,
+			STATUS_D_PROT_OP_ERROR = 0x20,
 			STATUS_D_MOTOR_ON = 0x40,
-			STATUS_D_PROTOCOL_ERROR_MASK = STATUS_D_RECV_OVERFLOW | STATUS_D_INVALID_REQ | STATUS_D_INVALID_REG_RANGE | STATUS_D_OP_ERROR,
+			STATUS_D_VERSION_BIT = 0x80,
+			STATUS_D_PROTOCOL_ERROR_MASK = STATUS_D_RECV_OVERFLOW | STATUS_D_INVALID_REQ | STATUS_D_BAD_REG_RANGE | STATUS_D_PROT_OP_ERROR,
 		};
 		enum error_drs_flag {
-			STATUS_E_OVER_VOLTAGE = 0x01,
+			STATUS_E_VOLTAGE = 0x01,
 			STATUS_E_POT_LIMIT = 0x02,
 			STATUS_E_TEMPERATURE = 0x04,
 			STATUS_E_INVALID_PACKET = 0x08,
 			STATUS_E_OVERLOAD = 0x10,
 			STATUS_E_DRIVER_FAULT = 0x20,
-			STATUS_E_EEP_REGS = 0x40,
-			STATUS_E_ERROR_MASK = STATUS_E_OVER_VOLTAGE | STATUS_E_POT_LIMIT | STATUS_E_TEMPERATURE | STATUS_E_OVERLOAD | STATUS_E_DRIVER_FAULT | STATUS_E_EEP_REGS,
+			STATUS_E_EEP_ERROR = 0x40,
+			STATUS_E_ERROR_MASK = STATUS_E_VOLTAGE | STATUS_E_POT_LIMIT | STATUS_E_TEMPERATURE | STATUS_E_OVERLOAD | STATUS_E_DRIVER_FAULT | STATUS_E_EEP_ERROR,
 		};
 		enum error_sb_flag {
-			STATUS_E_MOTOR_ON = 0x80,
+			STATUS_E_CONTROL_ON = 0x80,
+			TORQUE_POLICY_BRAKE_MODE = STATUS_E_CONTROL_ON,
 		};
 	};
 
@@ -152,6 +154,28 @@ namespace servo {
 			LED_MAGNETA      = 0x18, // 0b00011000
 
 			JOGMODE_MASK	 = 0x1F,
+		};
+	};
+
+	struct RT_WRITEMode {
+		unsigned char flags;
+
+		RT_WRITEMode() { flags = 0; }
+		RT_WRITEMode(unsigned char _flags) : flags(_flags) {}
+		operator unsigned char() const { return flags & RT_WRITE_MODE_MASK; }
+
+		enum {
+			FREE = 0x00,
+			BRAKE = 0x01,
+			CURRENT = 0x02,
+			CURRENT_STEP = 0x03,
+			CURRENT_SAW = 0x04,
+			POSITION = 0x08, 
+			SPEED = 0x09, 
+			PROFILE = 0x0a,
+			PROFILE_TIME = 0x0b,
+
+			RT_WRITE_MODE_MASK = 0x0f
 		};
 	};
 
@@ -196,7 +220,8 @@ namespace servo {
 			void reqWrite_eep(HerkulexPacket& req, const std::string&, unsigned int val) const;
 			void reqWriteClearStatus(HerkulexPacket& req) const;
 			void reqStat(HerkulexPacket& req) const;
-			void reqRollback(HerkulexPacket& req) const;
+			void reqRollback(HerkulexPacket& req) const;  
+
 			void reqReset(HerkulexPacket& req) const;
 			static void reqResetBroadcast(HerkulexPacket& req); // broadcast version
 
@@ -210,10 +235,16 @@ namespace servo {
 			void insertSJOGdata(HerkulexPacket& req, JOGMode mode, unsigned int goal) const;
 			virtual void insertSJOGdataConvert(HerkulexPacket& req, JOGMode mode, double goal) const;
 
-			// RT_EXCHANGE command generation
-			static void reqRT_EXCHANGEheader(HerkulexPacket& req);
-			void insertRT_EXCHANGEdata(HerkulexPacket& req, int position, int velocity, int current) const;
-			virtual void insertRT_EXCHANGEdataConvert(HerkulexPacket& req, double position, double velocity, double current) const;
+			// RT_READ command generation
+			static void reqRT_READheader(HerkulexPacket& req);
+			void insertRT_READdata(HerkulexPacket& req) const { 
+				req.data.push_back(hw_id); 
+			}
+
+			// RT_WRITE command generation
+			static void reqRT_WRITEheader(HerkulexPacket& req);
+			void insertRT_WRITEdata(HerkulexPacket& req, RT_WRITEMode mode, int position, int velocity, int current) const;
+			virtual void insertRT_WRITEdataConvert(HerkulexPacket& req, RT_WRITEMode mode, double position, double velocity, double current) const;
 
 			// Acknowelege packets parse functions.
 			bool ackRead_ram(const HerkulexPacket& ack, const std::string& reg, unsigned int& val, Status& status) const;
@@ -243,8 +274,12 @@ namespace servo {
 				return ackStatReturn_impl(ack, status);
 			}
 
-			// RT_EXCHANGE acknowlege packet parse
-			virtual bool ackRT_EXCHANGE(const HerkulexPacket& ack, RTState& state) const;
+			// RT_READ and RT_WRITE acknowlege packet parse
+			virtual bool ackRT_READ(const HerkulexPacket& ack, RTState& state) const;
+			bool ackRT_WRITE(const HerkulexPacket& ack, Status& status) const {
+				if (ack.command != HerkulexPacket::ACK_RT_WRITE) return false;
+				return ackStatReturn_impl(ack, status);
+			}
 
 			// Acknowlege packets parse callbacks. Callback can be stored in AckCallback variable and passed to function to perform
 			// multiple parse packets attemts.
@@ -273,10 +308,14 @@ namespace servo {
 				return boost::bind(&HerkulexServo::ackReset, this, boost::placeholders::_1, boost::ref(status));
 			}
 
-			AckCallback ackCallbackRT_EXCHANGE(RTState& state) const {
-				return boost::bind(&HerkulexServo::ackRT_EXCHANGE, this, boost::placeholders::_1, boost::ref(state));
+			AckCallback ackCallbackRT_READ(RTState& state) const {
+				return boost::bind(&HerkulexServo::ackRT_READ, this, boost::placeholders::_1, boost::ref(state));
+			}
+			AckCallback ackCallbackRT_WRITE(Status& status) const {
+				return boost::bind(&HerkulexServo::ackRT_WRITE, this, boost::placeholders::_1, boost::ref(status));
 			}
 
+			// data convertion
 			virtual double convertPosRawToRad(unsigned int raw) const = 0;
 			virtual unsigned int convertPosRadToRaw(double pos) const = 0;
 			virtual double convertVelRawToRad(unsigned int raw) const = 0;
@@ -288,12 +327,14 @@ namespace servo {
 			virtual double convertVoltageRawToVolts(unsigned int raw) const = 0;
 			virtual double convertTemperatureRawToCelsius(unsigned int raw) const = 0;
 
+			// get status with RAM_READ
 			virtual void reqPosVel(HerkulexPacket& req) const = 0;
 			virtual bool ackPosVel(const HerkulexPacket& ack, double& pos, double& vel, Status& status) const = 0;
 			AckCallback ackCallbackPosVel(double& pos, double& vel, Status& status) const {
 				return boost::bind(&HerkulexServo::ackPosVel, this, boost::placeholders::_1, boost::ref(pos), boost::ref(vel), boost::ref(status));
 			}
 
+			// get extended status with RAM_READ
 			virtual void reqPosVelExtended(HerkulexPacket& req) const = 0;
 			virtual bool ackPosVelExtended(const HerkulexPacket& ack, State& state, Status& status) const = 0;
 			AckCallback ackCallbackackPosVelExtended(State& state, Status& status) const {

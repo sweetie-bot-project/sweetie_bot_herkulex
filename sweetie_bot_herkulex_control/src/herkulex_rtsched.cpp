@@ -19,8 +19,9 @@ HerkulexRTSched::HerkulexRTSched(std::string const& name) :
 	receivePacketCM("receivePacketCM", this->engine()),
 	sendPacketDL("sendPacketDL", this->engine()),
 	waitSendPacketDL("waitSendPacketDL", this->engine()),
-	reqRT_EXCHANGE("reqRT_EXCHANGE"),
-	ackRT_EXCHANGE("ackRT_EXCHANGE"),
+	reqRT_WRITE("reqRT_WRITE"),
+	reqRT_READ("reqRT_READ"),
+	ackRT_READ("ackRT_READ"),
 	cm_req_buffer(10, HerkulexPacket(), true),
 	ack_buffer(10, HerkulexPacket(), true),
 	timer(this),
@@ -55,7 +56,7 @@ HerkulexRTSched::HerkulexRTSched(std::string const& name) :
 	this->addPort("in_joints_ref", joints_ref_port)
 		.doc("Servo reference  (position, speed, feedforward effort) or (effort).");
 	this->addPort("out_joints", joints_port)
-		.doc("Actual joint state: position, speed, effort.");
+		.doc("Actual joint state (position, speed, effort) for servos from poll_list.");
 #ifdef SCHED_STATISTICS
 	this->addPort("out_statistics", statistics_port)
 		.doc("Real time exchange statistics."); 
@@ -71,6 +72,8 @@ HerkulexRTSched::HerkulexRTSched(std::string const& name) :
 	this->addProperty("timeout", req_timeout)
 		.doc("Servo request timeout (sec).")
 		.set(0.005);
+	this->addProperty("poll_list", poll_list)
+		.doc("List of servos, which state is read during real-time exchange round.");
 	
 	// OPERATIONS: DATA LINK INTERFACE
 	this->addOperation("receivePacketDL", &HerkulexRTSched::receivePacketDL, this, ClientThread) 
@@ -86,8 +89,9 @@ HerkulexRTSched::HerkulexRTSched(std::string const& name) :
 	this->requires()->addOperationCaller(receivePacketCM);
 
 	// Protocol
-	this->requires("protocol")->addOperationCaller(reqRT_EXCHANGE);
-	this->requires("protocol")->addOperationCaller(ackRT_EXCHANGE);
+	this->requires("protocol")->addOperationCaller(reqRT_WRITE);
+	this->requires("protocol")->addOperationCaller(reqRT_READ);
+	this->requires("protocol")->addOperationCaller(ackRT_READ);
 }
 
 bool HerkulexRTSched::configureHook()
@@ -184,7 +188,7 @@ void HerkulexRTSched::updateHook()
 	
 	switch (sched_state) {
 		case RT_ROUND_REQ:
-			// wait sync and send RT_EXCHANGE command
+			// wait sync and send RT_WRITE Ans RT_READ commands
 			if (sync_port.read(timer_id) == NewData) {
 				timer.arm(ROUND_TIMER, this->period_RT);
 #ifdef SCHED_STATISTICS
@@ -200,37 +204,39 @@ void HerkulexRTSched::updateHook()
 				statistics.cm_start_time = 0;
 #endif /* SCHED_STATISTICS */
 
+				// get cmd from port
 				joints_ref_port.read(joints_ref, false);
-				bool success = reqRT_EXCHANGE(req_pkt, joints_ref);
-
-				if (success) {
-					sendPacketDL(req_pkt);
-
-					if (log(DEBUG)) {
-						log() << "Start RT_EXCHANGE round." << std::endl;
-						log() << "REQ packet: servo_id: "  << (int) req_pkt.servo_id << " cmd: " << (int) req_pkt.command << " data(" << req_pkt.data.size() << ") ";
-						log() << resetfmt << endlog();
-					}
-
-					clearPortBuffers();
-
-					if (! waitSendPacketDL.ready()) {
-						waitSendPacketDL();
-					}
+				// RT_WRITE request
+				if (!reqRT_WRITE(req_pkt, joints_ref)) {
+					log(WARN) << "Unable to form RT_WRITE request." << endlog();
+					sched_state = CM_ROUND;
+					break;
+				}
+				sendPacketDL(req_pkt);
+				//  RT_READ request
+				if (!reqRT_READ(req_pkt, poll_list)) {
+					log(WARN) << "Unable to form RT_READ request." << endlog();
+					sched_state = CM_ROUND;
+					break;
+				}
+				sendPacketDL(req_pkt);
+				// debug otuput and prepare to receive round
+				if (log(DEBUG)) {
+					log() << "Start RT_READ round." << std::endl;
+					log() << "REQ packet: servo_id: "  << (int) req_pkt.servo_id << " cmd: " << (int) req_pkt.command << " data(" << req_pkt.data.size() << ") ";
+					log() << resetfmt << endlog();
+				}
+				clearPortBuffers();
+				// wait until data is sent
+				if (! waitSendPacketDL.ready()) {
+					waitSendPacketDL();
+				}
 
 #ifdef SCHED_STATISTICS
 					statistics.rt_jog_send_duration = time_service->secondsSince(statistics_sync_timestamp);
 #endif /* SCHED_STATISTICS */
 				
-					sched_state = RT_ROUND_ACK;
-				}
-				else {
-					log(WARN) << "Unable to form RT_EXCHANGE request." << endlog();
-
-					sched_state = CM_ROUND;
-				}
-
-
+				sched_state = RT_ROUND_ACK;
 				break;
 			}
 			break;
@@ -245,7 +251,7 @@ void HerkulexRTSched::updateHook()
 
 					servo::Status status;
 					double temperature;
-					bool success = ackRT_EXCHANGE(*ack_pkt, joints, temperature, status);
+					bool success = ackRT_READ(*ack_pkt, joints, temperature, status);
 
 #ifdef SCHED_STATISTICS
 					statistics.rt_read_req_durationN = timer.timeRemaining(ROUND_TIMER);

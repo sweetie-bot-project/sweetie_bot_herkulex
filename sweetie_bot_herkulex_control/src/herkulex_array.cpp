@@ -276,14 +276,19 @@ HerkulexArray::HerkulexArray(std::string const& name) :
 		.doc("Generate IJOG packet, cause exeception on failure.")
 		.arg("req", "Reference to generated packet (HerkulexPacket).")
 		.arg("goal", "Position controlled servo new goal position (ServoGoal).");
-	this->provides("protocol")->addOperation("reqRT_EXCHANGE", &HerkulexArray::reqRT_EXCHANGE, this, ClientThread)
-		.doc("Generate RT_EXCHANGE packet, cause exeception on failure.")
+	this->provides("protocol")->addOperation("reqRT_WRITE", &HerkulexArray::reqRT_WRITE, this, ClientThread)
+		.doc("Generate RT_WRITE packet, cause exeception on failure.")
 		.arg("req", "Reference to generated packet (HerkulexPacket).")
 		.arg("cmd", "Position controlled servo reference position, speed and effort (JointState).");
-	this->provides("protocol")->addOperation("ackRT_EXCHANGE", &HerkulexArray::ackRT_EXCHANGE, this, ClientThread)
-		.doc("Parse RT_EXCHANGE ack packet, cause exeception on failure.")
+	this->provides("protocol")->addOperation("reqRT_READ", &HerkulexArray::reqRT_READ, this, ClientThread)
+		.doc("Generate RT_READ packet, cause exeception on failure.")
 		.arg("req", "Reference to generated packet (HerkulexPacket).")
-		.arg("cmd", "Position controlled servo reference position, speed and effort (JointState).");
+		.arg("servos", "Array with  servo names.");
+	this->provides("protocol")->addOperation("ackRT_READ", &HerkulexArray::ackRT_READ, this, ClientThread)
+		.doc("Parse RT_READ ack packet, cause exeception on failure.")
+		.arg("req", "Reference to generated packet (HerkulexPacket).")
+		.arg("temperatures", "Vector of temperatures.")
+		.arg("status", "Vector of status errors.");
 	this->provides("protocol")->addOperation("reqPosVel", &HerkulexArray::reqPosVel, this, ClientThread)
 		.doc("Generate READ packet for position and velocity query. Can cause exeception on failure.")
 		.arg("req", "Reference to generated packet (HerkulexPacket).")
@@ -983,46 +988,59 @@ bool HerkulexArray::reqIJOG(HerkulexPacket& req, const ServoGoal& goal)
 	}
 	return true;
 }
-
-bool HerkulexArray::reqRT_EXCHANGE(HerkulexPacket& req, const JointState& cmd)
+		
+bool HerkulexArray::reqRT_READ(HerkulexPacket& req, const std::vector<std::string>& servos)
 {
 	if (!this->isConfigured()) return false;
-	servo::HerkulexServo::reqRT_EXCHANGEheader(req);
+	servo::HerkulexServo::reqRT_READheader(req);
+	for(const std::string& servo_name : servos) {
+		const auto s = servo_name_map.find(servo_name);
+		if (s != servo_name_map.end()) {
+			s->second->insertRT_READdata(req);
+		}
+	}
+	return true;
+}
+
+bool HerkulexArray::reqRT_WRITE(HerkulexPacket& req, const JointState& cmd)
+{
+	if (!this->isConfigured()) return false;
+	servo::HerkulexServo::reqRT_WRITEheader(req);
 	int sz = cmd.name.size();
 	if (cmd.effort.size() == sz && cmd.position.size() == sz && cmd.velocity.size() == sz) {
-		// valid JointState with names, positions, velocties and efforts: position control mode
+		// valid JointState with names, positions, velocties and efforts => position control mode
 		for(int i = 0; i < cmd.name.size(); i++) {
 			const auto s = servo_name_map.find(cmd.name[i]);
 			if (s != servo_name_map.end()) {
-				s->second->insertRT_EXCHANGEdataConvert(req, cmd.position[i], cmd.velocity[i], cmd.effort[i]);
+				s->second->insertRT_WRITEdataConvert(req, herkulex::servo::RT_WRITEMode::POSITION, cmd.position[i], cmd.velocity[i], cmd.effort[i]);
 			}
 		}
 		return true;
 	}
 	else if (cmd.effort.size() == sz && cmd.position.size() == 0 && cmd.velocity.size() == 0) {
-		// valid JointState with names and efforts: effort control mode
+		// valid JointState with names and efforts => effort control mode
 		for(int i = 0; i < cmd.name.size(); i++) {
 			const auto s = servo_name_map.find(cmd.name[i]);
 			if (s != servo_name_map.end()) {
-				s->second->insertRT_EXCHANGEdataConvert(req, 0.0, 0.0, cmd.effort[i]);
+				s->second->insertRT_WRITEdataConvert(req, herkulex::servo::RT_WRITEMode::CURRENT, 0.0, 0.0, cmd.effort[i]);
 			}
 		}
 		return true;
 	}
 	else {
 		return false;
-		//throw std::invalid_argument("HerkulexArray::reqRT_EXCHANGE: JointState message has incorrect structure.");
+		//throw std::invalid_argument("HerkulexArray::reqRT_WRITE: JointState message has incorrect structure.");
 	}
 }
 
-bool HerkulexArray::ackRT_EXCHANGE(const HerkulexPacket& ack, JointState& joint_state_array, double& temperature, servo::Status& status)
+bool HerkulexArray::ackRT_READ(const HerkulexPacket& ack, JointState& joint_state_array, double& temperature, servo::Status& status)
 {
 	if (!this->isConfigured()) return false;
 	auto iter = servo_id_map.find(ack.servo_id);
 	if (iter == servo_id_map.end()) return false;
 	const HerkulexServo& s = *(iter->second);
 	servo::RTState state;
-	bool success = s.ackRT_EXCHANGE(ack, state);
+	bool success = s.ackRT_READ(ack, state);
 	if (success) {
 		joint_state_array.name.push_back(s.getName());
 		joint_state_array.position.push_back(state.position);

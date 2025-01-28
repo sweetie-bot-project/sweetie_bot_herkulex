@@ -143,8 +143,9 @@ class HerkulexArray : public RTT::TaskContext
 
 		// OPERATIONS: PROVIDED (protocol interface)
 		bool reqIJOG(HerkulexPacket& req, const ServoGoal& goal);
-		bool reqRT_EXCHANGE(HerkulexPacket& req, const JointState& cmd);
-		bool ackRT_EXCHANGE(const HerkulexPacket& req, JointState& state, double& temperature, servo::Status& status);
+		bool reqRT_WRITE(HerkulexPacket& req, const JointState& cmd);
+		bool reqRT_READ(HerkulexPacket& req, const std::vector<std::string>& servos);
+		bool ackRT_READ(const HerkulexPacket& req, JointState& state, double& temperature, servo::Status& status);
 		bool reqPosVel(HerkulexPacket& req, const std::string& servo);
 		bool ackPosVel(const HerkulexPacket& ack, const std::string& servo, double& pos, double& vel, servo::Status& status);
 		bool reqPosVelExtended(HerkulexPacket& req, const std::string& servo);
